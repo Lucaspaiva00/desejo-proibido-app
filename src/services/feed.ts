@@ -12,15 +12,7 @@ async function authHeader() {
 export async function buscarFeed() {
     const headers = await authHeader();
 
-    console.log("TOKEN HEADER:");
-    console.log(headers);
-
-    const response = await api.get("/busca", {
-        headers,
-    });
-
-    console.log("BUSCA RESPONSE:");
-    console.log(JSON.stringify(response.data, null, 2));
+    const response = await api.get("/busca", { headers });
 
     return response.data?.data || [];
 }
@@ -28,11 +20,7 @@ export async function buscarFeed() {
 export async function curtirUsuario(usuarioId: string) {
     const headers = await authHeader();
 
-    const { data } = await api.post(
-        `/curtidas/${usuarioId}`,
-        {},
-        { headers }
-    );
+    const { data } = await api.post(`/curtidas/${usuarioId}`, {}, { headers });
 
     return data;
 }
@@ -40,9 +28,29 @@ export async function curtirUsuario(usuarioId: string) {
 export async function pularUsuario(usuarioId: string) {
     const headers = await authHeader();
 
+    const { data } = await api.post(`/skips/${usuarioId}`, {}, { headers });
+
+    return data;
+}
+
+export async function bloquearUsuario(usuarioId: string) {
+    const headers = await authHeader();
+
+    const { data } = await api.post(`/bloqueios/${usuarioId}`, {}, { headers });
+
+    return data;
+}
+
+export async function denunciarUsuario(usuarioId: string) {
+    const headers = await authHeader();
+
     const { data } = await api.post(
-        `/skips/${usuarioId}`,
-        {},
+        "/denuncias",
+        {
+            denunciadoId: usuarioId,
+            motivo: "Perfil suspeito",
+            descricao: "Denúncia enviada pelo aplicativo mobile",
+        },
         { headers }
     );
 
