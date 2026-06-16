@@ -24,7 +24,7 @@ export default function Login() {
 
       await salvarToken(data.token);
 
-      router.replace("/home");
+      router.replace("/feed");
     } catch (error: any) {
       console.log("STATUS:", error?.response?.status);
       console.log("DATA:", error?.response?.data);
