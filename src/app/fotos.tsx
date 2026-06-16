@@ -75,38 +75,28 @@ export default function Fotos() {
             setUploading(true);
 
             const asset = imagem.assets[0];
+
             console.log(asset);
-            const response = await fetch(asset.uri);
-            const blob = await response.blob();
-
-            const formData = new FormData();
-
-            formData.append(
-                "file",
-                blob,
-                `foto-${Date.now()}.jpg`
-            );
-
-            formData.append(
-                "upload_preset",
-                "desejoproibido"
-            );
-
-            formData.append(
-                "folder",
-                "desejoproibido"
-            );
 
             const uploadCloudinary = await fetch(
                 "https://api.cloudinary.com/v1_1/dfdinbti3/image/upload",
                 {
                     method: "POST",
-                    body: formData,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        file: `data:${asset.mimeType};base64,${asset.base64}`,
+                        upload_preset: "desejoproibido",
+                    }),
                 }
             );
 
             const cloudData =
                 await uploadCloudinary.json();
+
+            console.log("CLOUDINARY:");
+            console.log(cloudData);
 
             if (cloudData.error) {
                 throw new Error(
@@ -139,6 +129,8 @@ export default function Fotos() {
 
             carregarFotos();
         } catch (error: any) {
+            console.log(error);
+
             Alert.alert(
                 "Erro",
                 error?.message ||
