@@ -27,6 +27,13 @@ import {
     listarConversas,
     statusConversa,
 } from "../services/chat";
+
+import {
+    enviarPresente,
+    listarPresentes
+} from "../services/presentes";
+
+
 import { uploadFotoCloudinary } from "../services/upload";
 
 export default function Chat() {
@@ -48,6 +55,11 @@ export default function Chat() {
     const [busca, setBusca] = useState("");
     const [ultimoTotal, setUltimoTotal] =
         useState(0);
+    const [presentes, setPresentes] =
+        useState<any[]>([]);
+
+    const [mostrarPresentes, setMostrarPresentes] =
+        useState(false);
     const [chatLiberado, setChatLiberado] = useState(false);
     const [saldoCreditos, setSaldoCreditos] = useState(0);
     const [custoCreditos, setCustoCreditos] = useState(10);
@@ -76,7 +88,18 @@ export default function Chat() {
 
             const lista = await listarConversas();
             setConversas(lista || []);
-
+            const listaPresentes =
+                await listarPresentes();
+            console.log(
+                "PRESENTES:",
+                JSON.stringify(
+                    listaPresentes,
+                    null,
+                    2
+                )
+            );
+            setPresentes(listaPresentes);
+            setPresentes(listaPresentes || []);
             if (conversaIdParam) {
                 const conversa = lista?.find(
                     (c: any) => c.id === conversaIdParam
@@ -97,7 +120,35 @@ export default function Chat() {
             setLoading(false);
         }
     }
+    async function enviarPresenteChat(
+        presenteId: string
+    ) {
+        try {
 
+            await enviarPresente(
+                conversaIdParam,
+                presenteId
+            );
+
+            setMostrarPresentes(false);
+
+            await carregarMensagens(
+                conversaIdParam
+            );
+
+            await carregarStatus(
+                conversaIdParam
+            );
+
+        } catch (error: any) {
+
+            Alert.alert(
+                "Erro",
+                error?.response?.data?.erro ||
+                "Falha ao enviar presente"
+            );
+        }
+    }
     async function selecionarFoto() {
         try {
             const imagem =
@@ -150,15 +201,7 @@ export default function Chat() {
         const novas =
             data?.mensagens || [];
 
-        if (
-            ultimoTotal > 0 &&
-            novas.length > ultimoTotal
-        ) {
-            Alert.alert(
-                "💬 Nova mensagem",
-                "Você recebeu uma nova mensagem."
-            );
-        }
+
 
         setUltimoTotal(novas.length);
 
@@ -537,7 +580,31 @@ export default function Chat() {
                         String(item.autorId) ===
                         String(meuId);
 
-                    return (
+                    return item.tipo === "PRESENTE" ? (
+                        <View
+                            style={{
+                                alignSelf: minha
+                                    ? "flex-end"
+                                    : "flex-start",
+                                marginVertical: 8,
+                                paddingHorizontal: 10,
+                            }}
+                        >
+                            <Image
+                                source={{
+                                    uri: `https://desejoproibido.app${item.metaJson?.imagemUrl}`,
+                                }}
+                                style={{
+                                    width: 120,
+                                    height: 120,
+                                    resizeMode: "contain",
+                                }}
+                            />
+
+
+                            
+                        </View>
+                    ) : (
                         <TouchableOpacity
                             style={[
                                 styles.bubble,
@@ -594,8 +661,72 @@ export default function Chat() {
 
                 </TouchableOpacity>
             )}
+            {presentes.length > 0 && (
+                <View
+                    style={{
+                        height: 85,
+                        backgroundColor: "#070304",
+                        borderTopWidth: 1,
+                        borderTopColor:
+                            "rgba(255,255,255,0.05)",
+                    }}
+                >
+                    <FlatList
+                        horizontal
+                        data={presentes}
+                        keyExtractor={(item) =>
+                            String(item.id)
+                        }
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{
+                            paddingHorizontal: 10,
+                            alignItems: "center",
+                        }}
+                        renderItem={({ item }) => {
+                            const imagemPresente =
+                                item.imagemUrl
+                                    ? `https://desejoproibido.app${item.imagemUrl}`
+                                    : null;
 
-            <TouchableOpacity style={styles.inputArea}>
+                            return (
+                                <TouchableOpacity
+                                    onPress={() =>
+                                        enviarPresenteChat(item.id)
+                                    }
+                                    style={{
+                                        width: 70,
+                                        alignItems: "center",
+                                        marginRight: 8,
+                                    }}
+                                >
+                                    <Image
+                                        source={{
+                                            uri: imagemPresente!,
+                                        }}
+                                        style={{
+                                            width: 50,
+                                            height: 50,
+                                            resizeMode: "contain",
+                                        }}
+                                    />
+
+                                    <Text
+                                        style={{
+                                            color: "#FFD700",
+                                            fontWeight: "700",
+                                            fontSize: 12,
+                                            marginTop: 4,
+                                        }}
+                                    >
+                                        💎{item.custoCreditos}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        }}
+                    />
+                </View>
+            )}
+            <View style={styles.inputArea}>
                 <TouchableOpacity
                     style={styles.iconButton}
                     onPress={selecionarFoto}
@@ -633,7 +764,7 @@ export default function Chat() {
                         Enviar
                     </Text>
                 </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
         </KeyboardAvoidingView>
     );
 }

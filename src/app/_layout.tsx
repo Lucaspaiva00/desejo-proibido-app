@@ -108,6 +108,50 @@ export default function Layout() {
         }}
       />
 
+      <Drawer.Screen
+        name="usuario"
+        options={{
+          drawerItemStyle: {
+            display: "none",
+          },
+          headerShown: false,
+        }}
+      />
+
+      <Drawer.Screen
+        name="carteira"
+        options={{
+          drawerItemStyle: {
+            display: "none",
+          },
+          headerShown: false,
+        }}
+      />
+
+      <Drawer.Screen
+        name="creditos"
+        options={{
+          drawerItemStyle: {
+            display: "none",
+          },
+          headerShown: false,
+        }}
+      />
+
+      <Drawer.Screen
+        name="conversas"
+        options={{
+          drawerItemStyle: {
+            display: "none",
+          },
+          headerShown: false,
+        }}
+      />
+
     </Drawer>
+
+
+
+
   );
 }
