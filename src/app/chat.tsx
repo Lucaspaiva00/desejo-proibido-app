@@ -522,22 +522,18 @@ export default function Chat() {
                     onPress={() => router.push("/chat")}
                     style={styles.backButton}
                 >
-                    <Text style={styles.backText}>
-                        ←
-                    </Text>
+                    <Text style={styles.backText}>←</Text>
                 </TouchableOpacity>
 
                 {fotoConversa(conversaAtual) ? (
                     <Image
                         source={{
-                            uri: fotoConversa(
-                                conversaAtual
-                            ),
+                            uri: fotoConversa(conversaAtual),
                         }}
                         style={styles.headerAvatar}
                     />
                 ) : (
-                    <TouchableOpacity
+                    <View
                         style={[
                             styles.headerAvatar,
                             styles.avatarFallback,
@@ -548,7 +544,7 @@ export default function Chat() {
                                 .charAt(0)
                                 .toUpperCase()}
                         </Text>
-                    </TouchableOpacity>
+                    </View>
                 )}
 
                 <View style={{ flex: 1 }}>
@@ -565,42 +561,28 @@ export default function Chat() {
                             : "Acesso restrito"}
                     </Text>
 
-                    <View
-                        style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            marginTop: 6,
-                        }}
-                    >
+                    <View style={styles.headerActions}>
                         <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={() =>
-                                router.push("/creditos")
-                            }
+                            style={styles.headerActionButton}
+                            onPress={() => router.push("/creditos")}
                         >
-                            <Text style={styles.actionIcon}>
-                                💎
-                            </Text>
+                            <Text style={styles.headerActionText}>💎</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.headerActionButton}
                         >
-                            <Text style={styles.actionText}>
-                                💸
-                            </Text>
+                            <Text style={styles.headerActionText}>💸</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.headerActionButton}
                         >
-                            <Text style={styles.actionText}>
-                                🎥
-                            </Text>
+                            <Text style={styles.headerActionText}>🎥</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.headerActionButton}
                             onPress={() =>
                                 ActionSheetIOS.showActionSheetWithOptions(
                                     {
@@ -614,13 +596,29 @@ export default function Chat() {
                                         cancelButtonIndex: 0,
                                         destructiveButtonIndex: 4,
                                     },
-                                    () => { }
+                                    (index) => {
+                                        if (index === 1) {
+                                            router.push(
+                                                `/usuario?id=${conversaAtual?.outroUsuarioId}`
+                                            );
+                                        }
+
+                                        if (index === 2) {
+                                            Alert.alert("Bloquear");
+                                        }
+
+                                        if (index === 3) {
+                                            Alert.alert("Denunciar");
+                                        }
+
+                                        if (index === 4) {
+                                            Alert.alert("Apagar conversa");
+                                        }
+                                    }
                                 )
                             }
                         >
-                            <Text style={styles.actionText}>
-                                ⋮
-                            </Text>
+                            <Text style={styles.headerActionText}>⋮</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -1135,5 +1133,26 @@ const styles = StyleSheet.create({
 
     actionIcon: {
         fontSize: 16,
+    },
+    headerActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 6,
+        gap: 6,
+    },
+
+    headerActionButton: {
+        backgroundColor: "#2A070C",
+        borderWidth: 1,
+        borderColor: "#5A0E18",
+        borderRadius: 16,
+        paddingHorizontal: 9,
+        paddingVertical: 6,
+    },
+
+    headerActionText: {
+        color: "#fff",
+        fontSize: 13,
+        fontWeight: "800",
     },
 });
