@@ -551,7 +551,7 @@ export default function Chat() {
                     </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={{ flex: 1 }}>
+                <View style={{ flex: 1 }}>
                     <Text
                         style={styles.headerName}
                         numberOfLines={1}
@@ -564,7 +564,66 @@ export default function Chat() {
                             ? "Chat liberado"
                             : "Acesso restrito"}
                     </Text>
-                </TouchableOpacity>
+
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginTop: 6,
+                        }}
+                    >
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() =>
+                                router.push("/creditos")
+                            }
+                        >
+                            <Text style={styles.actionIcon}>
+                                💎
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                        >
+                            <Text style={styles.actionText}>
+                                💸
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                        >
+                            <Text style={styles.actionText}>
+                                🎥
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() =>
+                                ActionSheetIOS.showActionSheetWithOptions(
+                                    {
+                                        options: [
+                                            "Cancelar",
+                                            "Ver perfil",
+                                            "Bloquear",
+                                            "Denunciar",
+                                            "Apagar conversa",
+                                        ],
+                                        cancelButtonIndex: 0,
+                                        destructiveButtonIndex: 4,
+                                    },
+                                    () => { }
+                                )
+                            }
+                        >
+                            <Text style={styles.actionText}>
+                                ⋮
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </View>
 
             <FlatList
@@ -602,7 +661,7 @@ export default function Chat() {
                             />
 
 
-                            
+
                         </View>
                     ) : (
                         <TouchableOpacity
@@ -633,8 +692,8 @@ export default function Chat() {
                         Sem mensagens ainda.
                     </Text>
                 )}
-            />
 
+            />
             {!chatLiberado && (
                 <TouchableOpacity style={styles.paywall}>
                     <Text style={styles.paywallTitle}>
@@ -1045,5 +1104,36 @@ const styles = StyleSheet.create({
     sendText: {
         color: "#fff",
         fontWeight: "900",
+    },
+
+    chatActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        backgroundColor: "#090304",
+        borderBottomWidth: 1,
+        borderBottomColor:
+            "rgba(255,255,255,0.08)",
+    },
+
+    actionButton: {
+        backgroundColor: "#2A070C",
+        borderWidth: 1,
+        borderColor: "#5A0E18",
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginRight: 8,
+    },
+
+    actionText: {
+        color: "#FFF",
+        fontSize: 12,
+        fontWeight: "700",
+    },
+
+    actionIcon: {
+        fontSize: 16,
     },
 });
