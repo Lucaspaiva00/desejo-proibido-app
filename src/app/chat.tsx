@@ -1,7 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-
 import {
     ActionSheetIOS,
     ActivityIndicator,
@@ -17,6 +16,7 @@ import {
     View
 } from "react-native";
 import { buscarUsuarioLogado } from "../services/auth";
+import { presentearCreditos } from "../services/carteira";
 import {
     apagarMensagem,
     buscarMensagens,
@@ -252,6 +252,65 @@ export default function Chat() {
                 "Não foi possível liberar o chat"
             );
         }
+    }
+    function enviarCreditos() {
+        Alert.prompt(
+            "Enviar créditos",
+            "Digite a quantidade",
+            async (valor) => {
+                try {
+                    const quantidade = Number(valor);
+
+                    if (!quantidade || quantidade <= 0) {
+                        return;
+                    }
+
+                    const destinatarioId =
+                        conversaAtual?.outroUsuarioId;
+
+                    if (!destinatarioId) {
+                        Alert.alert(
+                            "Erro",
+                            "Destinatário não encontrado."
+                        );
+                        return;
+                    }
+
+                    console.log("DESTINATARIO:", destinatarioId);
+                    console.log("QUANTIDADE:", quantidade);
+
+                    await presentearCreditos(
+                        destinatarioId,
+                        quantidade,
+                        "Presente enviado pelo chat"
+                    );
+
+                    Alert.alert(
+                        "Sucesso",
+                        `${quantidade} créditos enviados`
+                    );
+
+                    await carregarStatus(conversaIdParam);
+                } catch (e: any) {
+                    console.log(
+                        "ERRO ENVIAR CREDITOS:",
+                        e?.response?.status,
+                        e?.response?.data,
+                        e?.message
+                    );
+
+                    Alert.alert(
+                        "Erro",
+                        e?.response?.data?.error ||
+                        e?.response?.data?.erro ||
+                        e?.response?.data?.detalhe ||
+                        e?.message ||
+                        "Falha ao enviar créditos"
+                    );
+                }
+            },
+            "plain-text"
+        );
     }
     function abrirMenuMensagem(item: any) {
         const minha =
@@ -571,8 +630,11 @@ export default function Chat() {
 
                         <TouchableOpacity
                             style={styles.headerActionButton}
+                            onPress={enviarCreditos}
                         >
-                            <Text style={styles.headerActionText}>💸</Text>
+                            <Text style={styles.headerActionText}>
+                                💸
+                            </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
