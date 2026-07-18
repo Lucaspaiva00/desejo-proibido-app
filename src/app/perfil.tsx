@@ -4,11 +4,10 @@ import {
     Alert,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 
 import { api } from "../services/api";
@@ -287,29 +286,48 @@ export default function Perfil() {
                     Premium
                 </Text>
 
-                <Text style={styles.info}>
-                    Plano:
-                    {isPremium
-                        ? " Premium"
-                        : " Free"}
-                </Text>
-
-                <Text style={styles.info}>
-                    Créditos: {saldoCreditos}
-                </Text>
-
-                <View style={styles.switchRow}>
-                    <Text style={styles.info}>
-                        Modo Invisível
+                <View
+                    style={{
+                        backgroundColor: "#1D1115",
+                        padding: 14,
+                        borderRadius: 14,
+                        marginBottom: 12,
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: "#FFD700",
+                            fontSize: 18,
+                            fontWeight: "700",
+                        }}
+                    >
+                        👑 {isPremium ? "Premium" : "Free"}
                     </Text>
 
-                    <Switch
-                        value={isInvisivel}
-                        onValueChange={
-                            alterarInvisivel
-                        }
-                    />
+                    <Text
+                        style={{
+                            color: "#fff",
+                            marginTop: 6,
+                        }}
+                    >
+                        💎 {saldoCreditos} créditos
+                    </Text>
                 </View>
+
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() =>
+                        alterarInvisivel(
+                            !isInvisivel
+                        )
+                    }
+                >
+                    <Text style={styles.buttonText}>
+                        {isInvisivel
+                            ? "👻 Invisível Ativado"
+                            : "👻 Ativar Invisível"}
+                    </Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                     style={styles.button}
