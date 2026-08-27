@@ -13,7 +13,7 @@ export async function listarPresentes() {
         }
     );
 
-    return data;
+    return data?.data || data?.items || data || [];
 }
 
 export async function enviarPresente(

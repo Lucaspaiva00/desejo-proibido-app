@@ -1,0 +1,31 @@
+DESEJO PROIBIDO - MOBILE LIVES / CREATOR CENTER
+Data: 26/08/2026
+Repositorio: Lucaspaiva00/desejo-proibido-app
+Branch: master
+
+IMPLEMENTADO
+- Tela de listagem de lives com atualização em tempo real.
+- Status do usuário (minutos, créditos, pode transmitir / pode assistir).
+- Área da Criadora com solicitação de aprovação.
+- Financeiro da criadora, saldo disponível/bloqueado, top apoiadores e saques.
+- Solicitação de saque PIX pelo app.
+- Tela nativa para abrir live com câmera e microfone.
+- WebRTC host -> espectadores usando o Socket.IO já existente na API.
+- Tela do espectador com vídeo, consumo de minutos, presentes, gorjeta e chat.
+- Ranking e meta da live em tempo real.
+- Denúncia de live pelo mobile.
+- Encerramento e desconexão em tempo real.
+- Notificações locais para mudança de status da criadora e atualização de saque enquanto o app está conectado.
+- Configuração EAS Development Build.
+- Variáveis EXPO_PUBLIC para API, Socket, STUN e TURN.
+
+IMPORTANTE SOBRE EXPO GO
+react-native-webrtc contém código nativo. O vídeo de live NÃO roda no Expo Go padrão.
+Para testar a transmissão, gere um Development Build (EAS ou expo run:ios/android).
+
+TURN
+O pacote já aceita EXPO_PUBLIC_TURN_URL / USER / PASSWORD. Em produção, configure coturn ou outro TURN.
+Sem TURN, conexões WebRTC podem falhar em redes móveis/NATs restritivos mesmo que funcionem em Wi-Fi comum.
+
+BANCO/API
+Este pacote altera somente o app mobile. Não há Prisma, migration ou db push neste repositório.

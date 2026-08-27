@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "desejo-proibido-app",
+    "name": "Desejo Proibido",
     "slug": "desejo-proibido-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,9 @@
     "scheme": "desejoproibidoapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.desejoproibido.app",
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +19,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.desejoproibido.app"
     },
     "web": {
       "output": "static",
@@ -35,7 +38,16 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications",
+      "expo-dev-client",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Permitir que o Desejo Proibido acesse sua câmera para lives e chamadas de vídeo.",
+          "microphonePermission": "Permitir que o Desejo Proibido acesse seu microfone para lives e chamadas de vídeo."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

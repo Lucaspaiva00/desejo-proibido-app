@@ -1,26 +1,23 @@
 import { obterToken } from "../storage/auth";
 import { api } from "./api";
 
-export async function presentearCreditos(
-    destinatarioId: string,
-    valor: number,
-    mensagem?: string
-) {
-    const token = await obterToken();
+async function authHeader() {
+  const token = await obterToken();
+  return { Authorization: `Bearer ${token}` };
+}
 
-    const { data } = await api.post(
-        "/carteira/presentear",
-        {
-            destinatarioId,
-            valor,
-            mensagem,
-        },
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
+export async function obterCarteira() {
+  const headers = await authHeader();
+  const { data } = await api.get("/carteira", { headers });
+  return data;
+}
 
-    return data;
+export async function presentearCreditos(destinatarioId: string, valor: number, mensagem?: string) {
+  const headers = await authHeader();
+  const { data } = await api.post(
+    "/carteira/presentear",
+    { destinatarioId, valor, mensagem },
+    { headers }
+  );
+  return data;
 }
