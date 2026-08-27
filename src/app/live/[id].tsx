@@ -83,29 +83,29 @@ export default function AssistirLiveScreen() {
     peerRef.current = peer;
     hostSocketIdRef.current = hostSocketId;
 
-    peer.onicecandidate = (event: any) => {
+    (peer as any).addEventListener("icecandidate", (event: any) => {
       if (!event.candidate || !hostSocketIdRef.current) return;
       socket.emit("live:ice", {
         liveId,
         targetSocketId: hostSocketIdRef.current,
         candidate: event.candidate,
       });
-    };
+    });
 
-    peer.ontrack = (event: any) => {
+    (peer as any).addEventListener("track", (event: any) => {
       const incoming = event?.streams?.[0];
       if (incoming) {
         setRemoteStream(incoming);
         setVideoState("Ao vivo");
       }
-    };
+    });
 
-    peer.onconnectionstatechange = () => {
-      const state = String((peer as any).connectionState || "");
+    (peer as any).addEventListener("connectionstatechange", () => {
+      const state = String(peer.connectionState || "");
       if (state === "connected") setVideoState("Ao vivo");
       if (state === "connecting") setVideoState("Conectando vídeo...");
       if (["failed", "disconnected"].includes(state)) setVideoState("Reconectando vídeo...");
-    };
+    });
 
     await setRemoteSdp(peer, sdp);
     const queued = pendingIceRef.current.filter((item) => item.fromSocketId === hostSocketId);
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: "#050205", alignItems: "center", justifyContent: "center", gap: 10 },
   muted: { color: "#8C8085", fontSize: 13, marginTop: 5 },
   videoWrap: { height: 520, backgroundColor: "#000", position: "relative" },
-  video: { ...StyleSheet.absoluteFillObject },
+  video: { ...StyleSheet.absoluteFill },
   videoPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", gap: 11, backgroundColor: "#0D080A" },
   placeholderAvatar: { width: 84, height: 84, borderRadius: 42, opacity: 0.55 },
   videoState: { color: "#B5A7AC", fontWeight: "700" },

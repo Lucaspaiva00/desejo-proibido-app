@@ -76,7 +76,7 @@ export default function TransmitirScreen() {
     peersRef.current.set(viewerSocketId, peer);
     addStreamTracks(peer, localStream);
 
-    peer.onicecandidate = (event: any) => {
+    (peer as any).addEventListener("icecandidate", (event: any) => {
       if (event.candidate) {
         socket.emit("live:ice", {
           liveId: id,
@@ -84,12 +84,12 @@ export default function TransmitirScreen() {
           candidate: event.candidate,
         });
       }
-    };
+    });
 
-    peer.onconnectionstatechange = () => {
-      const state = String((peer as any).connectionState || "");
+    (peer as any).addEventListener("connectionstatechange", () => {
+      const state = String(peer.connectionState || "");
       if (["failed", "closed", "disconnected"].includes(state)) closePeer(viewerSocketId);
-    };
+    });
 
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   startButton: { backgroundColor: "#E21D3D", borderRadius: 15, padding: 17, alignItems: "center", marginTop: 16 },
   startButtonText: { color: "#fff", fontSize: 16, fontWeight: "900" },
   videoWrap: { height: 520, backgroundColor: "#000", position: "relative" },
-  video: { ...StyleSheet.absoluteFillObject },
+  video: { ...StyleSheet.absoluteFill },
   liveBadge: { position: "absolute", top: 16, left: 16, flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "rgba(0,0,0,.62)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
   redDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#FF254A" },
   liveBadgeText: { color: "#fff", fontWeight: "900", fontSize: 11 },

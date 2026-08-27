@@ -1,0 +1,16 @@
+DESEJO PROIBIDO MOBILE - CORRECAO BUILD ANDROID/APK
+Data: 27/08/2026
+
+CORRECOES
+- WebRTC: troca handlers onicecandidate/ontrack/onconnectionstatechange por addEventListener, compativel com os tipos da versao 124.0.7.
+- React Native 0.85: troca StyleSheet.absoluteFillObject por StyleSheet.absoluteFill.
+- Remove dois imports web quebrados herdados do template (animated-icon.module.css e src/global.css).
+- Atualiza Expo dentro do SDK 56 para ~56.0.20.
+- Atualiza @config-plugins/react-native-webrtc para 15.0.2.
+- EAS preview/development Android configurados explicitamente como APK.
+
+IMPORTANTE
+- NAO use npm audit fix --force antes do build.
+- Depois de aplicar o pacote, rode npm install para atualizar package-lock.json.
+- Rode npx expo install --fix para alinhar os pacotes ao SDK 56.
+- O APK para teste deve ser profile preview.
