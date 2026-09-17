@@ -156,7 +156,12 @@ export default function Feed() {
         </Pressable>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categories}>
+      <ScrollView
+        horizontal
+        style={styles.categoriesScroll}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categories}
+      >
         {categorias.map((item) => {
           const active = categoria === item;
           return (
@@ -175,7 +180,7 @@ export default function Feed() {
 
       <View style={styles.stage}>
         {usuario.fotoPrincipal ? (
-          <ImageBackground source={{ uri: usuario.fotoPrincipal }} resizeMode="cover" style={styles.photo} imageStyle={styles.photoImage}>
+          <ImageBackground source={{ uri: usuario.fotoPrincipal }} resizeMode="cover" style={styles.photo}>
             <View style={styles.photoShadeTop} />
             <View style={styles.photoShadeBottom} />
 
@@ -244,6 +249,8 @@ const styles = StyleSheet.create({
   brandText: { color: DP.colors.gold, fontWeight: "900", fontSize: 16, letterSpacing: 0.5 },
   topAction: { position: "absolute", right: 14, width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: DP.colors.borderGold },
   topActionText: { color: DP.colors.gold, fontSize: 18 },
+
+  categoriesScroll: { flexGrow: 0, height: 92, backgroundColor: "#000" },
   categories: { paddingHorizontal: 10, height: 92, alignItems: "stretch" },
   categoryItem: { width: 92, alignItems: "center", justifyContent: "center", position: "relative", paddingTop: 8 },
   categoryIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#121212", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
@@ -253,21 +260,21 @@ const styles = StyleSheet.create({
   categoryLabel: { color: "#777", fontSize: 10, marginTop: 6, fontWeight: "700", textAlign: "center" },
   categoryLabelActive: { color: DP.colors.textSoft },
   categoryLine: { position: "absolute", bottom: 0, width: 48, height: 2, borderRadius: 2, backgroundColor: DP.colors.gold },
-  stage: { flex: 1, paddingHorizontal: 8, paddingBottom: 86 },
-  photo: { flex: 1, borderRadius: 28, overflow: "hidden", backgroundColor: "#111" },
-  photoImage: { borderRadius: 28 },
-  photoShadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 110, backgroundColor: "rgba(0,0,0,0.18)" },
-  photoShadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 230, backgroundColor: "rgba(0,0,0,0.58)" },
+
+  stage: { flex: 1, paddingBottom: 78, backgroundColor: "#000" },
+  photo: { flex: 1, width: "100%", backgroundColor: "#111", overflow: "hidden" },
+  photoShadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 120, backgroundColor: "rgba(0,0,0,0.16)" },
+  photoShadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 250, backgroundColor: "rgba(0,0,0,0.62)" },
   boostBadge: { position: "absolute", top: 16, left: 16, borderRadius: 999, backgroundColor: "rgba(229,29,50,0.92)", paddingHorizontal: 11, paddingVertical: 7, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
   boostBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
-  profilePanel: { position: "absolute", left: 18, right: 92, bottom: 30 },
+  profilePanel: { position: "absolute", left: 18, right: 92, bottom: 28 },
   onlineRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 5 },
   onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DP.colors.gold },
   onlineText: { color: DP.colors.gold, fontSize: 12, fontWeight: "800" },
   name: { color: "#fff", fontSize: 32, fontWeight: "900", letterSpacing: -0.8, textShadowColor: "#000", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
   location: { color: "#E3DBD7", fontSize: 12, marginTop: 4, fontWeight: "700" },
   bio: { color: "rgba(255,255,255,0.88)", fontSize: 14, lineHeight: 20, marginTop: 7, fontWeight: "600" },
-  actionsRail: { position: "absolute", right: 18, bottom: 26, gap: 12 },
+  actionsRail: { position: "absolute", right: 18, bottom: 24, gap: 12 },
   actionButton: { width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", borderWidth: 1.2 },
   likeButton: { backgroundColor: DP.colors.primary, borderColor: "rgba(255,255,255,0.16)", ...DP.shadow.primary },
   goldButton: { backgroundColor: "rgba(255,255,255,0.92)", borderColor: DP.colors.gold },
@@ -277,7 +284,7 @@ const styles = StyleSheet.create({
   skipGlyph: { color: "#fff", fontSize: 34, lineHeight: 36, fontWeight: "200" },
   longPressHint: { position: "absolute", top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 5 },
   longPressText: { color: "rgba(255,255,255,0.45)", fontSize: 9 },
-  noPhoto: { flex: 1, borderRadius: 28, backgroundColor: "#0B0B0B", borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center", padding: 30 },
+  noPhoto: { flex: 1, backgroundColor: "#0B0B0B", borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center", padding: 30 },
   noPhotoCircle: { width: 92, height: 92, borderRadius: 46, backgroundColor: DP.colors.goldSoft, borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center" },
   noPhotoInitial: { color: DP.colors.gold, fontSize: 34, fontWeight: "900" },
   noPhotoTitle: { color: "#fff", fontSize: 27, fontWeight: "900", marginTop: 16 },
