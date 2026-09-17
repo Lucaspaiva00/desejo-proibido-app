@@ -5,12 +5,15 @@ import {
   Alert,
   FlatList,
   Image,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { DPBottomNav } from "../components/ui/dp-bottom-nav";
+import { EmptyState, Kicker, Pill, PrimaryButton, StatCard } from "../components/ui/dp-ui";
+import { DP, dpNumber } from "../constants/dp-theme";
 import { apiErrorMessage } from "../services/http";
 import { getRealtimeSocket } from "../services/liveSocket";
 import { listarLives, LiveItem, statusLives, LiveStatus } from "../services/lives";
@@ -51,24 +54,33 @@ export default function LivesScreen() {
     return () => socket?.off("live:list:update", update);
   }, [carregar]);
 
+  function abrir(item: LiveItem) {
+    if (status?.podeAssistir) {
+      router.push({ pathname: "/live/[id]", params: { id: item.id } });
+      return;
+    }
+    Alert.alert("Visualização indisponível", "Sua conta não está habilitada como espectador desta live.");
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#E21D3D" />
-        <Text style={styles.muted}>Buscando transmissões...</Text>
+        <ActivityIndicator size="large" color={DP.colors.primary} />
+        <Text style={styles.muted}>Preparando as transmissões...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.page}>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            tintColor="#E21D3D"
+            tintColor={DP.colors.primary}
             onRefresh={() => {
               setRefreshing(true);
               carregar(true);
@@ -76,130 +88,137 @@ export default function LivesScreen() {
           />
         }
         ListHeaderComponent={
-          <>
+          <View>
             <View style={styles.hero}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.eyebrow}>AO VIVO AGORA</Text>
-                <Text style={styles.title}>Lives</Text>
-                <Text style={styles.subtitle}>
-                  Entre, participe do chat e envie presentes em tempo real.
-                </Text>
+                <Kicker>AO VIVO AGORA</Kicker>
+                <Text style={styles.title}>Entre na conversa.</Text>
+                <Text style={styles.subtitle}>Transmissões em tempo real com chat, presentes e interação direta.</Text>
               </View>
-              <View style={styles.livePill}>
-                <View style={styles.dot} />
-                <Text style={styles.livePillText}>{items.length}</Text>
-              </View>
+              <Pill tone="primary">● {items.length} online</Pill>
             </View>
 
             {status?.podeTransmitir ? (
-              <TouchableOpacity style={styles.creatorCta} onPress={() => router.push("/transmitir")}>
-                <Text style={styles.creatorCtaTitle}>Você pode transmitir</Text>
-                <Text style={styles.creatorCtaText}>
-                  {status.liveAtiva ? "Continuar minha live" : "Abrir uma live agora"}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.creatorCard}>
+                <View style={styles.creatorGlow} />
+                <Pill tone="gold">CREATOR</Pill>
+                <Text style={styles.creatorTitle}>{status.liveAtiva ? "Sua live está ativa" : "Pronta para aparecer?"}</Text>
+                <Text style={styles.creatorText}>{status.liveAtiva ? "Volte para sua transmissão e continue de onde parou." : "Abra sua câmera e comece uma nova transmissão agora."}</Text>
+                <PrimaryButton
+                  title={status.liveAtiva ? "Voltar para minha live" : "Iniciar uma live"}
+                  subtitle="Câmera, chat, meta e presentes"
+                  onPress={() => router.push("/transmitir")}
+                />
+              </View>
             ) : null}
 
             {status?.podeAssistir ? (
               <View style={styles.balanceRow}>
-                <View style={styles.balanceCard}>
-                  <Text style={styles.balanceLabel}>Minutos</Text>
-                  <Text style={styles.balanceValue}>{status.minutosDisponiveis || 0}</Text>
-                </View>
-                <View style={styles.balanceCard}>
-                  <Text style={styles.balanceLabel}>Créditos</Text>
-                  <Text style={styles.balanceValue}>{status.saldoCreditos || 0}</Text>
-                </View>
+                <StatCard label="Minutos" value={dpNumber(status.minutosDisponiveis)} helper="Para assistir" />
+                <StatCard label="Créditos" value={dpNumber(status.saldoCreditos)} helper="Para interagir" accent />
               </View>
             ) : null}
 
-            {!!erro && <Text style={styles.error}>{erro}</Text>}
+            {!!erro ? <Text style={styles.error}>{erro}</Text> : null}
             <Text style={styles.sectionTitle}>Transmissões disponíveis</Text>
-          </>
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🔴</Text>
-            <Text style={styles.emptyTitle}>Nenhuma live agora</Text>
-            <Text style={styles.muted}>Puxe a tela para atualizar.</Text>
           </View>
         }
+        ListEmptyComponent={
+          <EmptyState title="Tudo tranquilo por enquanto" text="Nenhuma criadora está ao vivo agora. Puxe a tela para atualizar." />
+        }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.card}
-            onPress={() => {
-              if (status?.podeAssistir) {
-                router.push({ pathname: "/live/[id]", params: { id: item.id } });
-              } else {
-                Alert.alert("Visualização indisponível", "Sua conta não está habilitada como espectador desta live.");
-              }
-            }}
-          >
-            {item.host?.foto ? (
-              <Image source={{ uri: item.host.foto }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarText}>{(item.host?.nome || "?").slice(0, 1).toUpperCase()}</Text>
+          <Pressable onPress={() => abrir(item)} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+            <View style={styles.media}>
+              {item.host?.foto ? (
+                <Image source={{ uri: item.host.foto }} style={styles.photo} resizeMode="cover" />
+              ) : (
+                <View style={styles.photoFallback}>
+                  <Text style={styles.avatarText}>{(item.host?.nome || "?").slice(0, 1).toUpperCase()}</Text>
+                </View>
+              )}
+              <View style={styles.mediaShade} />
+              <View style={styles.liveTag}><View style={styles.dot} /><Text style={styles.liveTagText}>AO VIVO</Text></View>
+              <View style={styles.viewerTag}><Text style={styles.viewerTagText}>{item.viewersOnline || 0} assistindo</Text></View>
+              <View style={styles.mediaCopy}>
+                <View style={styles.hostRow}>
+                  <Text numberOfLines={1} style={styles.hostName}>{item.host?.nome || "Criadora"}</Text>
+                  {item.host?.verificada ? <Text style={styles.verified}>✓</Text> : null}
+                </View>
+                <Text numberOfLines={1} style={styles.liveTitle}>{item.titulo || "Ao vivo agora"}</Text>
               </View>
-            )}
-
-            <View style={{ flex: 1 }}>
-              <View style={styles.cardTop}>
-                <Text numberOfLines={1} style={styles.hostName}>{item.host?.nome || "Criadora"}</Text>
-                {item.host?.verificada ? <Text style={styles.verified}>✓</Text> : null}
-              </View>
-              <Text numberOfLines={1} style={styles.liveTitle}>{item.titulo || "Ao vivo agora"}</Text>
-              <Text style={styles.metaText}>
-                {item.viewersOnline || 0} assistindo
-                {item.host?.cidade ? ` · ${item.host.cidade}${item.host.estado ? `/${item.host.estado}` : ""}` : ""}
-              </Text>
             </View>
 
-            <View style={styles.watchButton}>
-              <Text style={styles.watchButtonText}>Entrar</Text>
+            <View style={styles.cardBottom}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.locationText}>
+                  {item.host?.cidade ? `${item.host.cidade}${item.host.estado ? ` • ${item.host.estado}` : ""}` : "Localização privada"}
+                </Text>
+                <Text style={styles.cardHint}>Toque para entrar na transmissão</Text>
+              </View>
+              <View style={styles.enterButton}><Text style={styles.enterButtonText}>Entrar</Text><Text style={styles.enterArrow}>›</Text></View>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         )}
         contentContainerStyle={styles.content}
       />
+      <DPBottomNav />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#050205" },
-  content: { padding: 18, paddingBottom: 40 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#050205", gap: 12 },
-  hero: { flexDirection: "row", alignItems: "center", marginBottom: 18 },
-  eyebrow: { color: "#E21D3D", fontSize: 12, fontWeight: "900", letterSpacing: 1.8 },
-  title: { color: "#fff", fontSize: 34, fontWeight: "900", marginTop: 4 },
-  subtitle: { color: "#9C9095", fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
-  livePill: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#1A0A0E", paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, borderWidth: 1, borderColor: "#3A121B" },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#FF274C" },
-  livePillText: { color: "#fff", fontWeight: "900" },
-  creatorCta: { backgroundColor: "#17090D", borderColor: "#6E1728", borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 14 },
-  creatorCtaTitle: { color: "#fff", fontSize: 17, fontWeight: "900" },
-  creatorCtaText: { color: "#E21D3D", marginTop: 4, fontWeight: "700" },
-  balanceRow: { flexDirection: "row", gap: 10, marginBottom: 18 },
-  balanceCard: { flex: 1, backgroundColor: "#10070A", padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "#241016" },
-  balanceLabel: { color: "#877A7F", fontSize: 12, textTransform: "uppercase", fontWeight: "800" },
-  balanceValue: { color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 4 },
-  sectionTitle: { color: "#fff", fontSize: 18, fontWeight: "900", marginBottom: 12, marginTop: 4 },
-  card: { flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "#0E0709", borderWidth: 1, borderColor: "#221015", borderRadius: 20, padding: 13, marginBottom: 11 },
-  avatar: { width: 58, height: 58, borderRadius: 18, backgroundColor: "#1D1014" },
-  avatarFallback: { alignItems: "center", justifyContent: "center" },
-  avatarText: { color: "#fff", fontSize: 23, fontWeight: "900" },
-  cardTop: { flexDirection: "row", alignItems: "center", gap: 5 },
-  hostName: { color: "#fff", fontSize: 16, fontWeight: "900", maxWidth: 180 },
-  verified: { color: "#61A9FF", fontWeight: "900" },
-  liveTitle: { color: "#C7BBC0", marginTop: 3, fontSize: 13 },
-  metaText: { color: "#776A70", marginTop: 5, fontSize: 12 },
-  watchButton: { backgroundColor: "#E21D3D", paddingHorizontal: 13, paddingVertical: 9, borderRadius: 12 },
-  watchButtonText: { color: "#fff", fontWeight: "900", fontSize: 12 },
-  error: { color: "#FF8094", backgroundColor: "#2B0D14", padding: 12, borderRadius: 12, marginBottom: 14 },
-  empty: { alignItems: "center", paddingVertical: 44 },
-  emptyEmoji: { fontSize: 34 },
-  emptyTitle: { color: "#fff", fontSize: 18, fontWeight: "900", marginTop: 8 },
-  muted: { color: "#8D8085", marginTop: 6 },
+  page: { flex: 1, backgroundColor: DP.colors.background },
+  content: { padding: 18, paddingTop: 22, paddingBottom: 112 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: DP.colors.background, gap: 10 },
+  muted: { color: DP.colors.muted, marginTop: 4 },
+  hero: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 20 },
+  title: { color: DP.colors.text, fontSize: 31, lineHeight: 35, fontWeight: "900", letterSpacing: -1, marginTop: 7 },
+  subtitle: { color: DP.colors.muted, fontSize: 13, lineHeight: 19, marginTop: 7, maxWidth: 290 },
+  creatorCard: {
+    overflow: "hidden",
+    backgroundColor: "#1A0D11",
+    borderRadius: DP.radius.xl,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: DP.colors.borderStrong,
+    marginBottom: 14,
+    ...DP.shadow.card,
+  },
+  creatorGlow: { position: "absolute", width: 170, height: 170, borderRadius: 85, right: -50, top: -70, backgroundColor: "rgba(244,196,106,0.06)" },
+  creatorTitle: { color: DP.colors.text, fontSize: 22, fontWeight: "900", marginTop: 13, letterSpacing: -0.5 },
+  creatorText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5, marginBottom: 15 },
+  balanceRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
+  sectionTitle: { color: DP.colors.text, fontSize: 19, fontWeight: "900", marginBottom: 12, marginTop: 4 },
+  card: {
+    backgroundColor: DP.colors.surface,
+    borderRadius: DP.radius.xl,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: DP.colors.border,
+    marginBottom: 14,
+    ...DP.shadow.card,
+  },
+  media: { height: 218, backgroundColor: DP.colors.surface2, position: "relative" },
+  photo: { width: "100%", height: "100%" },
+  photoFallback: { flex: 1, backgroundColor: "#281019", alignItems: "center", justifyContent: "center" },
+  avatarText: { color: DP.colors.text, fontSize: 48, fontWeight: "900" },
+  mediaShade: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.22)" },
+  liveTag: { position: "absolute", left: 13, top: 13, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(10,5,8,0.82)", borderRadius: DP.radius.pill, paddingHorizontal: 10, paddingVertical: 7 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DP.colors.primary },
+  liveTagText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
+  viewerTag: { position: "absolute", right: 13, top: 13, backgroundColor: "rgba(10,5,8,0.72)", borderRadius: DP.radius.pill, paddingHorizontal: 10, paddingVertical: 7 },
+  viewerTagText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  mediaCopy: { position: "absolute", left: 14, right: 14, bottom: 14 },
+  hostRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  hostName: { color: "#fff", fontSize: 22, fontWeight: "900", maxWidth: 260, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
+  verified: { color: DP.colors.info, fontWeight: "900", fontSize: 17 },
+  liveTitle: { color: "rgba(255,255,255,0.88)", marginTop: 3, fontSize: 13, fontWeight: "700" },
+  cardBottom: { minHeight: 74, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 15, paddingVertical: 12 },
+  locationText: { color: DP.colors.textSoft, fontSize: 12, fontWeight: "800" },
+  cardHint: { color: DP.colors.dim, fontSize: 11, marginTop: 4 },
+  enterButton: { flexDirection: "row", alignItems: "center", backgroundColor: DP.colors.primary, borderRadius: DP.radius.md, paddingHorizontal: 14, paddingVertical: 10 },
+  enterButtonText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+  enterArrow: { color: "#fff", fontSize: 20, marginLeft: 5, marginTop: -1 },
+  error: { color: DP.colors.danger, backgroundColor: "rgba(255,99,122,0.08)", borderWidth: 1, borderColor: "rgba(255,99,122,0.22)", padding: 12, borderRadius: DP.radius.md, marginBottom: 14 },
+  pressed: { opacity: 0.86, transform: [{ scale: 0.995 }] },
 });
