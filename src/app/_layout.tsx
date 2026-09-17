@@ -25,7 +25,7 @@ export default function Layout() {
         overlayColor: "rgba(0,0,0,0.55)",
       }}
     >
-      <Drawer.Screen name="feed" options={{ title: "Descobrir" }} />
+      <Drawer.Screen name="feed" options={{ title: "Feed" }} />
       <Drawer.Screen name="lives" options={{ title: "Lives" }} />
       <Drawer.Screen name="matches" options={{ title: "Matches" }} />
       <Drawer.Screen name="conversas" options={{ title: "Conversas" }} />
