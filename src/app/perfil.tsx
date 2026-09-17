@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -162,7 +163,7 @@ export default function Perfil() {
           </Pressable>
         </View>
 
-        <SecondaryButton title="Gerenciar minhas fotos" onPress={() => {}} />
+        <SecondaryButton title="Gerenciar minhas fotos" onPress={() => router.push("/fotos")} />
       </ScrollView>
       <DPBottomNav />
     </View>
