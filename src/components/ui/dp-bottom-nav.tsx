@@ -3,10 +3,10 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DP } from "../../constants/dp-theme";
 
 const items = [
-  { label: "Descobrir", route: "/feed", icon: "◒" },
-  { label: "Lives", route: "/lives", icon: "●" },
-  { label: "Chats", route: "/conversas", icon: "◫" },
-  { label: "Carteira", route: "/carteira", icon: "◇" },
+  { label: "Descubra", route: "/feed", icon: "⌁" },
+  { label: "Matches", route: "/matches", icon: "♡" },
+  { label: "Conversas", route: "/conversas", icon: "◌" },
+  { label: "Carteira", route: "/carteira", icon: "▣" },
   { label: "Perfil", route: "/perfil", icon: "○" },
 ] as const;
 
@@ -22,10 +22,15 @@ export function DPBottomNav() {
             <Pressable
               key={item.route}
               onPress={() => router.replace(item.route)}
-              style={({ pressed }) => [styles.item, active && styles.itemActive, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.item, pressed && styles.pressed]}
             >
-              <Text style={[styles.icon, active && styles.iconActive]}>{item.icon}</Text>
-              <Text numberOfLines={1} style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
+              <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                <Text style={[styles.icon, active && styles.iconActive]}>{item.icon}</Text>
+              </View>
+              <Text numberOfLines={1} style={[styles.label, active && styles.labelActive]}>
+                {item.label}
+              </Text>
+              {active ? <View style={styles.activeLine} /> : null}
             </Pressable>
           );
         })}
@@ -37,34 +42,63 @@ export function DPBottomNav() {
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 10,
-    zIndex: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 60,
   },
   dock: {
-    height: 70,
+    height: 78,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(16,12,16,0.97)",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: DP.colors.border,
-    paddingHorizontal: 6,
-    ...DP.shadow.card,
+    backgroundColor: "rgba(3,3,3,0.985)",
+    borderTopWidth: 1,
+    borderTopColor: DP.colors.borderGold,
+    paddingHorizontal: 8,
+    paddingBottom: 6,
   },
   item: {
     flex: 1,
-    height: 56,
-    borderRadius: 18,
+    height: 68,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
+    position: "relative",
   },
-  itemActive: { backgroundColor: DP.colors.primarySoft },
-  icon: { color: DP.colors.dim, fontSize: 18, fontWeight: "900" },
-  iconActive: { color: DP.colors.primary },
-  label: { color: DP.colors.dim, fontSize: 9, fontWeight: "800" },
-  labelActive: { color: DP.colors.text },
-  pressed: { opacity: 0.72 },
+  iconWrap: {
+    width: 32,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapActive: {
+    backgroundColor: DP.colors.primarySoft,
+  },
+  icon: {
+    color: DP.colors.gold,
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  iconActive: {
+    color: DP.colors.primary,
+  },
+  label: {
+    color: "#A99884",
+    fontSize: 9,
+    fontWeight: "700",
+  },
+  labelActive: {
+    color: DP.colors.primary,
+  },
+  activeLine: {
+    position: "absolute",
+    top: 0,
+    width: 30,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: DP.colors.primary,
+    ...DP.shadow.primary,
+  },
+  pressed: { opacity: 0.7 },
 });
