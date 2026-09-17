@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 
 import { Drawer } from "expo-router/drawer";
+import { DP } from "../constants/dp-theme";
 import { useRealtimeNotifications } from "../hooks/use-realtime-notifications";
 
 export default function Layout() {
@@ -9,24 +10,27 @@ export default function Layout() {
   return (
     <Drawer
       screenOptions={{
-        headerStyle: { backgroundColor: "#080407" },
-        headerTintColor: "#fff",
+        headerStyle: { backgroundColor: DP.colors.backgroundSoft },
+        headerTintColor: DP.colors.text,
         headerTitle: "Desejo Proibido",
+        headerTitleStyle: { fontWeight: "900", fontSize: 16 },
         headerShadowVisible: false,
-        drawerStyle: { backgroundColor: "#0B0507" },
-        drawerActiveBackgroundColor: "#E21D3D",
-        drawerActiveTintColor: "#fff",
-        drawerInactiveTintColor: "#D7C9CE",
-        drawerLabelStyle: { fontSize: 15, fontWeight: "700" },
-        sceneStyle: { backgroundColor: "#050205" },
+        drawerStyle: { backgroundColor: DP.colors.backgroundSoft, width: 310 },
+        drawerActiveBackgroundColor: DP.colors.primarySoft,
+        drawerActiveTintColor: DP.colors.primary,
+        drawerInactiveTintColor: DP.colors.textSoft,
+        drawerLabelStyle: { fontSize: 14, fontWeight: "800", marginLeft: -4 },
+        drawerItemStyle: { borderRadius: 16, marginHorizontal: 10, marginVertical: 3 },
+        sceneStyle: { backgroundColor: DP.colors.background },
+        overlayColor: "rgba(0,0,0,0.55)",
       }}
     >
       <Drawer.Screen name="feed" options={{ title: "Descobrir" }} />
-      <Drawer.Screen name="lives" options={{ title: "🔴 Lives" }} />
+      <Drawer.Screen name="lives" options={{ title: "Lives" }} />
       <Drawer.Screen name="matches" options={{ title: "Matches" }} />
       <Drawer.Screen name="conversas" options={{ title: "Conversas" }} />
-      <Drawer.Screen name="perfil" options={{ title: "Perfil" }} />
-      <Drawer.Screen name="fotos" options={{ title: "Fotos" }} />
+      <Drawer.Screen name="perfil" options={{ title: "Meu perfil" }} />
+      <Drawer.Screen name="fotos" options={{ title: "Minhas fotos" }} />
       <Drawer.Screen name="carteira" options={{ title: "Carteira" }} />
       <Drawer.Screen name="creditos" options={{ title: "Comprar créditos" }} />
       <Drawer.Screen name="criadora" options={{ title: "Área da Criadora" }} />
