@@ -3,14 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { DPBottomNav } from "../components/ui/dp-bottom-nav";
+import { Kicker, Pill, PrimaryButton, SectionHeader, StatCard } from "../components/ui/dp-ui";
+import { DP, dpNumber } from "../constants/dp-theme";
 import {
   CriadoraStatus,
   financeiroCriadora,
@@ -27,11 +29,15 @@ function moneyFromCentavos(value: number) {
   return (Number(value || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function statusColor(status: string) {
-  if (status === "APROVADA" || status === "PAGO") return "#27C281";
-  if (status === "PENDENTE" || status === "APROVADO") return "#F0A52B";
-  if (status === "BLOQUEADA" || status === "REPROVADA" || status === "RECUSADO") return "#E14A60";
-  return "#7D7277";
+function statusTone(status: string): "neutral" | "primary" | "success" | "gold" {
+  if (status === "APROVADA" || status === "PAGO") return "success";
+  if (status === "PENDENTE" || status === "APROVADO") return "gold";
+  if (status === "BLOQUEADA" || status === "REPROVADA" || status === "RECUSADO") return "primary";
+  return "neutral";
+}
+
+function statusLabel(value: string) {
+  return String(value || "").replace(/_/g, " ");
 }
 
 export default function CriadoraScreen() {
@@ -129,170 +135,200 @@ export default function CriadoraScreen() {
   }
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#E21D3D" /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={DP.colors.primary} /></View>;
   }
 
   if (!status) return null;
 
   const ganhoCentavos = Number(financeiro?.ganhos?.valorCentavosEstimado || 0);
+  const disponivel = financeiro?.carteira?.disponivel ?? status.carteira.disponivel;
+  const bloqueado = financeiro?.carteira?.bloqueado ?? status.carteira.bloqueado;
+  const ganhos = financeiro?.ganhos?.creditos ?? 0;
+  const lives = financeiro?.lives?.length ?? 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>CREATOR CENTER</Text>
-      <Text style={styles.title}>Área da Criadora</Text>
-      <Text style={styles.subtitle}>Transmita, acompanhe seus ganhos e solicite saques.</Text>
+    <View style={styles.page}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Kicker>CREATOR CENTER</Kicker>
+        <Text style={styles.title}>Sua operação de criadora em um só lugar.</Text>
+        <Text style={styles.subtitle}>Transmita, acompanhe seus ganhos e solicite seus saques com clareza.</Text>
 
-      <View style={styles.statusCard}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardLabel}>Status da conta</Text>
-          <Text style={[styles.statusText, { color: statusColor(status.creatorStatus) }]}>{status.creatorStatus.replaceAll("_", " ")}</Text>
-          <Text style={styles.smallText}>{status.nome || "Seu perfil"} · {status.idade ?? "-"} anos</Text>
-        </View>
-        <View style={[styles.statusDot, { backgroundColor: statusColor(status.creatorStatus) }]} />
-      </View>
-
-      {status.creatorMotivo ? <Text style={styles.warning}>{status.creatorMotivo}</Text> : null}
-
-      {!status.elegivelParaSolicitar && status.creatorStatus === "NAO_SOLICITADO" ? (
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>Conta não elegível</Text>
-          <Text style={styles.smallText}>Para solicitar uma conta de criadora, o perfil precisa ser feminino, estar ativo e ter 18 anos ou mais.</Text>
-        </View>
-      ) : null}
-
-      {status.elegivelParaSolicitar && !status.podeTransmitir && status.creatorStatus !== "PENDENTE" ? (
-        <TouchableOpacity disabled={acao} style={styles.primaryButton} onPress={solicitarAprovacao}>
-          <Text style={styles.primaryButtonText}>{acao ? "Enviando..." : "Solicitar aprovação"}</Text>
-        </TouchableOpacity>
-      ) : null}
-
-      {status.creatorStatus === "PENDENTE" ? (
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>Em análise</Text>
-          <Text style={styles.smallText}>O administrador precisa aprovar sua conta antes da primeira transmissão.</Text>
-        </View>
-      ) : null}
-
-      {status.podeTransmitir ? (
-        <>
-          <TouchableOpacity style={styles.liveButton} onPress={() => router.push("/transmitir")}>
-            <Text style={styles.liveButtonTop}>🔴</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.liveButtonTitle}>Abrir uma live</Text>
-              <Text style={styles.liveButtonText}>Câmera, chat, presentes e meta em tempo real</Text>
-            </View>
-          </TouchableOpacity>
-
-          <Text style={styles.sectionTitle}>Financeiro</Text>
-          <View style={styles.grid}>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Disponível</Text><Text style={styles.metricValue}>{financeiro?.carteira?.disponivel ?? status.carteira.disponivel}</Text><Text style={styles.metricUnit}>créditos</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Bloqueado</Text><Text style={styles.metricValue}>{financeiro?.carteira?.bloqueado ?? status.carteira.bloqueado}</Text><Text style={styles.metricUnit}>créditos</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Ganhos</Text><Text style={styles.metricValue}>{financeiro?.ganhos?.creditos ?? 0}</Text><Text style={styles.metricUnit}>{moneyFromCentavos(ganhoCentavos)}</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Lives</Text><Text style={styles.metricValue}>{financeiro?.lives?.length ?? 0}</Text><Text style={styles.metricUnit}>recentes</Text></View>
+        <View style={styles.statusCard}>
+          <View style={styles.statusGlow} />
+          <View style={styles.statusTop}>
+            <Pill tone={statusTone(status.creatorStatus)}>{statusLabel(status.creatorStatus)}</Pill>
+            <Text style={styles.statusAge}>{status.idade ?? "-"} anos</Text>
           </View>
+          <Text style={styles.creatorName}>{status.nome || "Seu perfil"}</Text>
+          <Text style={styles.statusText}>
+            {status.podeTransmitir
+              ? "Sua conta está pronta para transmitir e receber ganhos."
+              : status.creatorStatus === "PENDENTE"
+                ? "Sua solicitação está em análise."
+                : "Conclua a aprovação para liberar transmissões e monetização."}
+          </Text>
+        </View>
 
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Solicitar saque PIX</Text>
-            <Text style={styles.smallText}>Os créditos ficam bloqueados enquanto o saque estiver em análise.</Text>
+        {status.creatorMotivo ? <Text style={styles.warning}>{status.creatorMotivo}</Text> : null}
 
-            <TextInput
-              value={valor}
-              onChangeText={setValor}
-              keyboardType="number-pad"
-              placeholder="Valor em créditos"
-              placeholderTextColor="#756A6E"
-              style={styles.input}
-            />
+        {!status.elegivelParaSolicitar && status.creatorStatus === "NAO_SOLICITADO" ? (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>Conta ainda não elegível</Text>
+            <Text style={styles.infoText}>O perfil precisa ser feminino, estar ativo e ter 18 anos ou mais.</Text>
+          </View>
+        ) : null}
 
-            <View style={styles.chips}>
-              {pixTypes.map((type) => (
-                <TouchableOpacity key={type} onPress={() => setPixType(type)} style={[styles.chip, pixType === type && styles.chipActive]}>
-                  <Text style={[styles.chipText, pixType === type && styles.chipTextActive]}>{type}</Text>
-                </TouchableOpacity>
-              ))}
+        {status.elegivelParaSolicitar && !status.podeTransmitir && status.creatorStatus !== "PENDENTE" ? (
+          <PrimaryButton title={acao ? "Enviando..." : "Solicitar aprovação"} subtitle="Enviar perfil para análise" onPress={solicitarAprovacao} disabled={acao} />
+        ) : null}
+
+        {status.creatorStatus === "PENDENTE" ? (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>Em análise</Text>
+            <Text style={styles.infoText}>O administrador precisa aprovar sua conta antes da primeira transmissão.</Text>
+          </View>
+        ) : null}
+
+        {status.podeTransmitir ? (
+          <>
+            <View style={styles.liveCard}>
+              <View style={styles.liveIndicator}><View style={styles.liveDot} /><Text style={styles.liveIndicatorText}>AO VIVO</Text></View>
+              <Text style={styles.liveTitle}>Pronta para começar?</Text>
+              <Text style={styles.liveText}>Abra a câmera, defina sua meta e acompanhe chat e presentes em tempo real.</Text>
+              <PrimaryButton title="Abrir uma live" subtitle="Transmitir agora" onPress={() => router.push("/transmitir")} />
             </View>
 
-            <TextInput
-              value={pix}
-              onChangeText={setPix}
-              placeholder="Chave PIX"
-              autoCapitalize="none"
-              placeholderTextColor="#756A6E"
-              style={styles.input}
-            />
+            <SectionHeader title="Visão financeira" />
+            <View style={styles.grid}>
+              <StatCard label="Disponível" value={dpNumber(disponivel)} helper="créditos" accent />
+              <StatCard label="Bloqueado" value={dpNumber(bloqueado)} helper="em análise" />
+            </View>
+            <View style={styles.gridSecondary}>
+              <StatCard label="Ganhos" value={dpNumber(ganhos)} helper={moneyFromCentavos(ganhoCentavos)} />
+              <StatCard label="Lives" value={dpNumber(lives)} helper="recentes" />
+            </View>
 
-            {!!valor && <Text style={styles.estimate}>Estimativa: {estimado}</Text>}
-            <TouchableOpacity disabled={acao} onPress={pedirSaque} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{acao ? "Processando..." : "Solicitar saque"}</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.payoutCard}>
+              <Text style={styles.payoutKicker}>SAQUE PIX</Text>
+              <Text style={styles.payoutTitle}>Retirar seus ganhos</Text>
+              <Text style={styles.payoutText}>Os créditos ficam bloqueados enquanto o saque estiver em análise.</Text>
 
-          <Text style={styles.sectionTitle}>Últimos saques</Text>
-          {(financeiro?.saques || []).length ? (financeiro.saques || []).slice(0, 8).map((s: any) => (
-            <View key={s.id} style={styles.rowCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{s.valorCreditos} créditos</Text>
-                <Text style={styles.smallText}>{moneyFromCentavos(s.valorCentavos)} · {s.tipoChavePix}</Text>
+              <TextInput
+                value={valor}
+                onChangeText={setValor}
+                keyboardType="number-pad"
+                placeholder="Valor em créditos"
+                placeholderTextColor={DP.colors.dim}
+                style={styles.input}
+              />
+
+              <View style={styles.chips}>
+                {pixTypes.map((type) => (
+                  <Pressable key={type} onPress={() => setPixType(type)} style={[styles.chip, pixType === type && styles.chipActive]}>
+                    <Text style={[styles.chipText, pixType === type && styles.chipTextActive]}>{type}</Text>
+                  </Pressable>
+                ))}
               </View>
-              <Text style={[styles.rowStatus, { color: statusColor(s.status) }]}>{s.status}</Text>
-            </View>
-          )) : <Text style={styles.smallText}>Nenhum saque solicitado.</Text>}
 
-          <Text style={styles.sectionTitle}>Top apoiadores</Text>
-          {(financeiro?.topApoiadores || []).length ? financeiro.topApoiadores.map((a: any, index: number) => (
-            <View key={a.userId} style={styles.supporter}>
-              <Text style={styles.supporterPosition}>{index + 1}</Text>
-              <Text style={styles.supporterName}>{a.nome}</Text>
-              <Text style={styles.supporterCredits}>{a.creditos} cr.</Text>
+              <TextInput
+                value={pix}
+                onChangeText={setPix}
+                placeholder="Chave PIX"
+                autoCapitalize="none"
+                placeholderTextColor={DP.colors.dim}
+                style={styles.input}
+              />
+
+              {!!valor ? <Text style={styles.estimate}>Estimativa: {estimado}</Text> : null}
+              <PrimaryButton title={acao ? "Processando..." : "Solicitar saque"} subtitle="Enviar solicitação para análise" onPress={pedirSaque} disabled={acao} />
             </View>
-          )) : <Text style={styles.smallText}>Seu ranking aparecerá depois dos primeiros presentes.</Text>}
-        </>
-      ) : null}
-    </ScrollView>
+
+            <SectionHeader title="Últimos saques" />
+            {(financeiro?.saques || []).length ? (financeiro.saques || []).slice(0, 8).map((s: any) => (
+              <View key={s.id} style={styles.rowCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowTitle}>{dpNumber(s.valorCreditos)} créditos</Text>
+                  <Text style={styles.rowSub}>{moneyFromCentavos(s.valorCentavos)} • {s.tipoChavePix}</Text>
+                </View>
+                <Pill tone={statusTone(s.status)}>{statusLabel(s.status)}</Pill>
+              </View>
+            )) : <Text style={styles.emptyText}>Nenhum saque solicitado até agora.</Text>}
+
+            <SectionHeader title="Top apoiadores" />
+            {(financeiro?.topApoiadores || []).length ? financeiro.topApoiadores.map((a: any, index: number) => (
+              <View key={a.userId} style={styles.supporter}>
+                <View style={styles.position}><Text style={styles.positionText}>{index + 1}</Text></View>
+                <Text style={styles.supporterName}>{a.nome}</Text>
+                <Text style={styles.supporterCredits}>{dpNumber(a.creditos)} cr.</Text>
+              </View>
+            )) : <Text style={styles.emptyText}>Seu ranking aparecerá depois dos primeiros presentes.</Text>}
+          </>
+        ) : null}
+      </ScrollView>
+      <DPBottomNav />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#050205" },
-  content: { padding: 18, paddingBottom: 50 },
-  center: { flex: 1, backgroundColor: "#050205", alignItems: "center", justifyContent: "center" },
-  eyebrow: { color: "#E21D3D", fontWeight: "900", letterSpacing: 1.7, fontSize: 12 },
-  title: { color: "#fff", fontSize: 31, fontWeight: "900", marginTop: 4 },
-  subtitle: { color: "#94888D", fontSize: 14, lineHeight: 20, marginTop: 6, marginBottom: 18 },
-  statusCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#10070A", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#291017" },
-  cardLabel: { color: "#83777B", fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
-  statusText: { fontSize: 21, fontWeight: "900", marginTop: 4 },
-  smallText: { color: "#8F8388", fontSize: 13, lineHeight: 19, marginTop: 4 },
-  statusDot: { width: 13, height: 13, borderRadius: 7 },
-  warning: { backgroundColor: "#321018", color: "#FF94A5", padding: 12, borderRadius: 12, marginTop: 10 },
-  infoBox: { backgroundColor: "#10080B", borderRadius: 16, padding: 15, marginTop: 12, borderWidth: 1, borderColor: "#241116" },
-  infoTitle: { color: "#fff", fontWeight: "900", fontSize: 16 },
-  primaryButton: { backgroundColor: "#E21D3D", borderRadius: 14, padding: 15, alignItems: "center", marginTop: 14 },
-  primaryButtonText: { color: "#fff", fontWeight: "900", fontSize: 15 },
-  liveButton: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#1D080D", borderColor: "#79172A", borderWidth: 1, borderRadius: 18, padding: 16, marginTop: 14 },
-  liveButtonTop: { fontSize: 25 },
-  liveButtonTitle: { color: "#fff", fontWeight: "900", fontSize: 17 },
-  liveButtonText: { color: "#B89DA5", fontSize: 12, marginTop: 3 },
-  sectionTitle: { color: "#fff", fontSize: 19, fontWeight: "900", marginTop: 24, marginBottom: 11 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  metric: { width: "48%", backgroundColor: "#0F0709", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#241116" },
-  metricLabel: { color: "#867A7F", fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
-  metricValue: { color: "#fff", fontSize: 23, fontWeight: "900", marginTop: 5 },
-  metricUnit: { color: "#B19FA5", marginTop: 2, fontSize: 12 },
-  panel: { backgroundColor: "#0E0709", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#241116", marginTop: 12 },
-  panelTitle: { color: "#fff", fontSize: 17, fontWeight: "900" },
-  input: { backgroundColor: "#170C0F", color: "#fff", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 13, borderWidth: 1, borderColor: "#30151C", marginTop: 12 },
+  page: { flex: 1, backgroundColor: DP.colors.background },
+  content: { padding: 18, paddingTop: 22, paddingBottom: 112 },
+  center: { flex: 1, backgroundColor: DP.colors.background, alignItems: "center", justifyContent: "center" },
+  title: { color: DP.colors.text, fontSize: 31, lineHeight: 35, fontWeight: "900", letterSpacing: -1, marginTop: 8 },
+  subtitle: { color: DP.colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8, marginBottom: 18, maxWidth: 370 },
+  statusCard: {
+    overflow: "hidden",
+    backgroundColor: DP.colors.surface,
+    borderRadius: DP.radius.xl,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: DP.colors.border,
+    marginBottom: 14,
+    ...DP.shadow.card,
+  },
+  statusGlow: { position: "absolute", width: 150, height: 150, borderRadius: 75, right: -50, top: -60, backgroundColor: "rgba(255,45,85,0.08)" },
+  statusTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  statusAge: { color: DP.colors.dim, fontSize: 11, fontWeight: "800" },
+  creatorName: { color: DP.colors.text, fontSize: 24, fontWeight: "900", marginTop: 14, letterSpacing: -0.5 },
+  statusText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  warning: { backgroundColor: "rgba(255,99,122,0.08)", color: DP.colors.danger, padding: 12, borderRadius: DP.radius.md, borderWidth: 1, borderColor: "rgba(255,99,122,0.22)", marginBottom: 12 },
+  infoBox: { backgroundColor: DP.colors.surface, borderRadius: DP.radius.lg, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: DP.colors.border },
+  infoTitle: { color: DP.colors.text, fontWeight: "900", fontSize: 16 },
+  infoText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  liveCard: {
+    backgroundColor: "#1A0C11",
+    borderRadius: DP.radius.xl,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: DP.colors.borderStrong,
+    marginBottom: 24,
+    ...DP.shadow.card,
+  },
+  liveIndicator: { flexDirection: "row", alignItems: "center", gap: 6 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DP.colors.primary },
+  liveIndicatorText: { color: DP.colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  liveTitle: { color: DP.colors.text, fontSize: 23, fontWeight: "900", marginTop: 10, letterSpacing: -0.5 },
+  liveText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5, marginBottom: 15 },
+  grid: { flexDirection: "row", gap: 10 },
+  gridSecondary: { flexDirection: "row", gap: 10, marginTop: 10, marginBottom: 22 },
+  payoutCard: { backgroundColor: DP.colors.surface, borderRadius: DP.radius.xl, padding: 17, borderWidth: 1, borderColor: DP.colors.border, marginBottom: 24 },
+  payoutKicker: { color: DP.colors.gold, fontSize: 10, fontWeight: "900", letterSpacing: 1.3 },
+  payoutTitle: { color: DP.colors.text, fontSize: 20, fontWeight: "900", marginTop: 7 },
+  payoutText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  input: { backgroundColor: DP.colors.surface2, color: DP.colors.text, paddingHorizontal: 14, minHeight: 52, borderRadius: DP.radius.md, borderWidth: 1, borderColor: DP.colors.border, marginTop: 12 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
-  chip: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "#160B0E", borderWidth: 1, borderColor: "#2B161C" },
-  chipActive: { backgroundColor: "#E21D3D", borderColor: "#E21D3D" },
-  chipText: { color: "#A89BA0", fontWeight: "800", fontSize: 11 },
-  chipTextActive: { color: "#fff" },
-  estimate: { color: "#D8C7CC", marginTop: 10, fontWeight: "700" },
-  rowCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#0E0709", borderRadius: 14, padding: 13, marginBottom: 8, borderWidth: 1, borderColor: "#211015" },
-  rowTitle: { color: "#fff", fontWeight: "900" },
-  rowStatus: { fontSize: 12, fontWeight: "900" },
-  supporter: { flexDirection: "row", alignItems: "center", backgroundColor: "#0E0709", borderRadius: 14, padding: 13, marginBottom: 8 },
-  supporterPosition: { color: "#E21D3D", fontWeight: "900", width: 28 },
-  supporterName: { color: "#fff", fontWeight: "800", flex: 1 },
-  supporterCredits: { color: "#D1C2C7", fontWeight: "900" },
+  chip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: DP.radius.pill, backgroundColor: DP.colors.surface2, borderWidth: 1, borderColor: DP.colors.border },
+  chipActive: { backgroundColor: DP.colors.primarySoft, borderColor: DP.colors.borderStrong },
+  chipText: { color: DP.colors.muted, fontSize: 10, fontWeight: "900" },
+  chipTextActive: { color: "#FF91A7" },
+  estimate: { color: DP.colors.gold, fontSize: 12, fontWeight: "800", marginTop: 10, marginBottom: 2 },
+  rowCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DP.colors.surface, borderRadius: DP.radius.lg, padding: 14, borderWidth: 1, borderColor: DP.colors.border, marginBottom: 9 },
+  rowTitle: { color: DP.colors.text, fontWeight: "900", fontSize: 14 },
+  rowSub: { color: DP.colors.muted, fontSize: 11, marginTop: 4 },
+  supporter: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DP.colors.surface, borderRadius: DP.radius.md, padding: 13, borderWidth: 1, borderColor: DP.colors.border, marginBottom: 8 },
+  position: { width: 30, height: 30, borderRadius: 11, backgroundColor: DP.colors.primarySoft, alignItems: "center", justifyContent: "center" },
+  positionText: { color: DP.colors.primary, fontWeight: "900" },
+  supporterName: { flex: 1, color: DP.colors.textSoft, fontWeight: "800" },
+  supporterCredits: { color: DP.colors.gold, fontWeight: "900", fontSize: 12 },
+  emptyText: { color: DP.colors.muted, fontSize: 12, marginBottom: 22 },
 });
