@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DP } from "../../constants/dp-theme";
 
 const items = [
-  { label: "Descubra", route: "/feed", icon: "⌁" },
+  { label: "Feed", route: "/feed", icon: "⌁" },
   { label: "Matches", route: "/matches", icon: "♡" },
   { label: "Conversas", route: "/conversas", icon: "◌" },
   { label: "Carteira", route: "/carteira", icon: "▣" },
