@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
+import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { buscarBloqueados, desbloquearUsuario } from "../services/bloqueados";
 
@@ -60,14 +61,19 @@ export default function Bloqueados() {
   }, [usuarios, busca]);
 
   if (loading) {
-    return <View style={styles.loading}><ActivityIndicator size="large" color={DP.colors.gold} /></View>;
+    return (
+      <LuxuryScreen>
+        <View style={styles.loading}><ActivityIndicator size="large" color={DP.colors.gold} /></View>
+      </LuxuryScreen>
+    );
   }
 
   return (
-    <View style={styles.page}>
+    <LuxuryScreen>
+      <LuxuryHeader />
       <View style={styles.content}>
-        <Text style={styles.brand}>DESEJO PROIBIDO</Text>
-        <Text style={styles.title}>Usuários bloqueados</Text>
+        <Eyebrow>PRIVACIDADE</Eyebrow>
+        <Text style={styles.title}>Bloqueados</Text>
         <Text style={styles.subtitle}>Gerencie quem não pode visualizar ou contatar você.</Text>
 
         <View style={styles.searchWrap}>
@@ -76,7 +82,7 @@ export default function Bloqueados() {
             value={busca}
             onChangeText={setBusca}
             placeholder="Buscar usuário bloqueado"
-            placeholderTextColor="#6B6460"
+            placeholderTextColor="#746D69"
             style={styles.search}
           />
         </View>
@@ -103,7 +109,7 @@ export default function Bloqueados() {
                     {item.usuario?.perfil?.cidade || "Localização não informada"}
                     {item.usuario?.perfil?.estado ? ` • ${item.usuario.perfil.estado}` : ""}
                   </Text>
-                  <Pressable style={styles.unlockButton} onPress={() => desbloquear(item.usuario.id)}>
+                  <Pressable style={({ pressed }) => [styles.unlockButton, pressed && styles.pressed]} onPress={() => desbloquear(item.usuario.id)}>
                     <Text style={styles.unlockText}>Desbloquear</Text>
                   </Pressable>
                 </View>
@@ -112,7 +118,10 @@ export default function Bloqueados() {
           }}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
-              <View style={styles.shield}><Text style={styles.shieldText}>✓</Text></View>
+              <View style={styles.shield}>
+                <Text style={styles.shieldText}>◇</Text>
+                <View style={styles.shieldKey}><Text style={styles.shieldKeyText}>✓</Text></View>
+              </View>
               <Text style={styles.emptyTitle}>Nenhum usuário bloqueado</Text>
               <Text style={styles.emptyText}>Quando você bloquear alguém, essa pessoa aparecerá aqui.</Text>
               <View style={styles.securityRow}>
@@ -124,36 +133,37 @@ export default function Bloqueados() {
         />
       </View>
       <DPBottomNav />
-    </View>
+    </LuxuryScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#000" },
-  content: { flex: 1, paddingHorizontal: 16, paddingTop: 18 },
-  loading: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" },
-  brand: { color: DP.colors.gold, fontSize: 12, fontWeight: "900", letterSpacing: 1.5 },
-  title: { color: "#fff", fontSize: 30, fontWeight: "900", marginTop: 17, letterSpacing: -0.6 },
-  subtitle: { color: DP.colors.muted, fontSize: 12, marginTop: 4 },
-  searchWrap: { height: 50, borderRadius: 15, backgroundColor: "#0B0B0B", borderWidth: 1, borderColor: DP.colors.borderGold, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, marginTop: 18, marginBottom: 18 },
-  searchIcon: { color: DP.colors.primary, fontSize: 22, marginRight: 8 },
-  search: { flex: 1, color: "#fff", fontSize: 13 },
-  list: { paddingBottom: 105 },
-  card: { minHeight: 110, borderRadius: 18, borderWidth: 1, borderColor: "rgba(233,185,73,0.22)", backgroundColor: "#090909", padding: 11, marginBottom: 10, flexDirection: "row", alignItems: "center" },
-  photo: { width: 82, height: 82, borderRadius: 18, marginRight: 12, borderWidth: 1, borderColor: DP.colors.borderGold },
-  photoFallback: { backgroundColor: "#17120A", alignItems: "center", justifyContent: "center" },
-  photoFallbackText: { color: DP.colors.gold, fontSize: 28, fontWeight: "900" },
+  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
+  content: { flex: 1, paddingHorizontal: 20 },
+  title: { color: "#FFFDFC", fontFamily: DP_SERIF, fontSize: 36, lineHeight: 40, fontWeight: "700", marginTop: 14 },
+  subtitle: { color: "#8F8986", fontSize: 12, marginTop: 5 },
+  searchWrap: { height: 56, borderRadius: 16, backgroundColor: "rgba(8,7,6,0.94)", borderWidth: 1, borderColor: "rgba(233,185,73,0.56)", flexDirection: "row", alignItems: "center", paddingHorizontal: 13, marginTop: 18, marginBottom: 18 },
+  searchIcon: { color: "#F1CD70", fontSize: 22, marginRight: 8 },
+  search: { flex: 1, color: "#FFF", fontSize: 13 },
+  list: { paddingBottom: 110 },
+  card: { minHeight: 118, borderRadius: 18, borderWidth: 1, borderColor: "rgba(233,185,73,0.3)", backgroundColor: "rgba(8,7,6,0.95)", padding: 12, marginBottom: 10, flexDirection: "row", alignItems: "center" },
+  photo: { width: 88, height: 88, borderRadius: 20, marginRight: 13, borderWidth: 1, borderColor: "#EBC65D" },
+  photoFallback: { backgroundColor: "#171108", alignItems: "center", justifyContent: "center" },
+  photoFallbackText: { color: "#F1CD70", fontFamily: DP_SERIF, fontSize: 31, fontWeight: "800" },
   info: { flex: 1 },
-  name: { color: "#fff", fontSize: 17, fontWeight: "900" },
-  location: { color: DP.colors.muted, fontSize: 11, marginTop: 4 },
-  unlockButton: { alignSelf: "flex-start", minWidth: 112, height: 34, borderRadius: 10, borderWidth: 1, borderColor: DP.colors.gold, alignItems: "center", justifyContent: "center", marginTop: 10, paddingHorizontal: 12 },
-  unlockText: { color: DP.colors.gold, fontSize: 11, fontWeight: "900" },
-  emptyCard: { marginTop: 4, minHeight: 360, borderRadius: 24, borderWidth: 1, borderColor: DP.colors.borderGold, backgroundColor: "#0A0A0A", alignItems: "center", justifyContent: "center", padding: 28, ...DP.shadow.card },
-  shield: { width: 96, height: 110, borderRadius: 34, borderWidth: 2, borderColor: DP.colors.gold, backgroundColor: "#12100A", alignItems: "center", justifyContent: "center", ...DP.shadow.gold },
-  shieldText: { color: DP.colors.goldBright, fontSize: 42, fontWeight: "300" },
-  emptyTitle: { color: "#fff", fontSize: 20, fontWeight: "900", marginTop: 24, textAlign: "center" },
-  emptyText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 8, maxWidth: 260 },
-  securityRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 28 },
-  securityDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DP.colors.gold },
-  securityText: { color: "#7D746F", fontSize: 10 },
+  name: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 19, fontWeight: "700" },
+  location: { color: "#8F8986", fontSize: 11, marginTop: 4 },
+  unlockButton: { alignSelf: "flex-start", minWidth: 118, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#EBC65D", alignItems: "center", justifyContent: "center", marginTop: 11, paddingHorizontal: 12 },
+  unlockText: { color: "#F1CD70", fontFamily: DP_SERIF, fontSize: 12, fontWeight: "700" },
+  emptyCard: { marginTop: 16, minHeight: 390, borderRadius: 24, borderWidth: 1, borderColor: "rgba(233,185,73,0.54)", backgroundColor: "rgba(8,7,6,0.94)", alignItems: "center", justifyContent: "center", padding: 28 },
+  shield: { width: 110, height: 124, borderRadius: 38, borderWidth: 2, borderColor: "#EBC65D", backgroundColor: "rgba(20,14,7,0.9)", alignItems: "center", justifyContent: "center", shadowColor: "#EBC65D", shadowOpacity: 0.25, shadowRadius: 14, elevation: 6 },
+  shieldText: { color: "#F1CD70", fontSize: 48 },
+  shieldKey: { position: "absolute", width: 34, height: 34, borderRadius: 17, backgroundColor: "#7E0011", alignItems: "center", justifyContent: "center" },
+  shieldKeyText: { color: "#FFF", fontSize: 16, fontWeight: "900" },
+  emptyTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 23, fontWeight: "700", marginTop: 26, textAlign: "center" },
+  emptyText: { color: "#8F8986", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 8, maxWidth: 270 },
+  securityRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 30 },
+  securityDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EBC65D" },
+  securityText: { color: "#756F6C", fontSize: 10 },
+  pressed: { opacity: 0.72 },
 });
