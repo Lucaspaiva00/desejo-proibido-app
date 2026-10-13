@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { EmptyState } from "../components/ui/dp-ui";
+import { DP_SERIF, GoldButton, LockHeart, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import {
   bloquearUsuario,
@@ -114,25 +114,41 @@ export default function Feed() {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <View style={styles.loaderMark}><View style={styles.loaderDot} /></View>
-        <ActivityIndicator size="small" color={DP.colors.gold} />
-        <Text style={styles.loadingText}>Encontrando conexões para você...</Text>
-      </View>
+      <LuxuryScreen>
+        <View style={styles.loading}>
+          <LockHeart size={76} />
+          <ActivityIndicator size="small" color={DP.colors.gold} />
+          <Text style={styles.loadingText}>Encontrando conexões para você...</Text>
+        </View>
+      </LuxuryScreen>
     );
   }
 
   if (!usuario) {
     return (
-      <View style={styles.page}>
+      <LuxuryScreen>
+        <LuxuryHeader
+          action={
+            <Pressable onPress={carregar} style={styles.refreshSmall}>
+              <Text style={styles.refreshSmallText}>↻</Text>
+            </Pressable>
+          }
+        />
         <View style={styles.emptyWrap}>
-          <EmptyState title="Você viu todos os perfis" text="Atualize para buscar novas conexões disponíveis." />
-          <Pressable style={styles.reloadButton} onPress={carregar}>
-            <Text style={styles.reloadText}>Buscar novamente</Text>
-          </Pressable>
+          <View style={styles.emptyGlow} />
+          <View style={styles.emptyLines}>
+            <View style={styles.emptyLine} />
+            <View style={styles.lockCircle}><LockHeart size={94} /></View>
+            <View style={styles.emptyLine} />
+          </View>
+          <Text style={styles.emptyTitle}>Você já viu todos os perfis</Text>
+          <Text style={styles.emptyText}>Atualize para descobrir novas conexões disponíveis.</Text>
+          <View style={styles.emptyButton}>
+            <GoldButton title="Buscar novamente" onPress={carregar} red />
+          </View>
         </View>
         <DPBottomNav />
-      </View>
+      </LuxuryScreen>
     );
   }
 
@@ -144,17 +160,14 @@ export default function Feed() {
   const inicial = nome.charAt(0).toUpperCase();
 
   return (
-    <View style={styles.page}>
-      <View style={styles.topbar}>
-        <View style={styles.brandLock}>
-          <Text style={styles.brandHeart}>♡</Text>
-          <View style={styles.keyhole} />
-        </View>
-        <Text style={styles.brandText}>DESEJO PROIBIDO</Text>
-        <Pressable style={styles.topAction} onPress={carregar}>
-          <Text style={styles.topActionText}>↻</Text>
-        </Pressable>
-      </View>
+    <LuxuryScreen>
+      <LuxuryHeader
+        action={
+          <Pressable onPress={carregar} style={styles.refreshSmall}>
+            <Text style={styles.refreshSmallText}>↻</Text>
+          </Pressable>
+        }
+      />
 
       <ScrollView
         horizontal
@@ -232,65 +245,108 @@ export default function Feed() {
       </View>
 
       <DPBottomNav />
-    </View>
+    </LuxuryScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#000" },
-  loading: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center", gap: 12 },
-  loaderMark: { width: 66, height: 66, borderRadius: 22, borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center", backgroundColor: DP.colors.goldSoft },
-  loaderDot: { width: 15, height: 15, borderRadius: 8, backgroundColor: DP.colors.primary },
-  loadingText: { color: DP.colors.muted, fontSize: 12 },
-  topbar: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: "rgba(233,185,73,0.14)" },
-  brandLock: { width: 30, height: 30, borderRadius: 11, borderWidth: 1.4, borderColor: DP.colors.gold, alignItems: "center", justifyContent: "center", marginRight: 8 },
-  brandHeart: { color: DP.colors.gold, fontSize: 19, fontWeight: "900", lineHeight: 22 },
-  keyhole: { position: "absolute", width: 6, height: 8, borderRadius: 4, backgroundColor: DP.colors.primary },
-  brandText: { color: DP.colors.gold, fontWeight: "900", fontSize: 16, letterSpacing: 0.5 },
-  topAction: { position: "absolute", right: 14, width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: DP.colors.borderGold },
-  topActionText: { color: DP.colors.gold, fontSize: 18 },
-
-  categoriesScroll: { flexGrow: 0, height: 92, backgroundColor: "#000" },
-  categories: { paddingHorizontal: 10, height: 92, alignItems: "stretch" },
-  categoryItem: { width: 92, alignItems: "center", justifyContent: "center", position: "relative", paddingTop: 8 },
-  categoryIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#121212", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
-  categoryIconActive: { backgroundColor: "rgba(229,29,50,0.16)", borderColor: DP.colors.primary },
-  categoryGlyph: { color: DP.colors.gold, fontSize: 20, fontWeight: "800" },
+  loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14 },
+  loadingText: { color: "#9C9591", fontSize: 12 },
+  refreshSmall: {
+    width: 37,
+    height: 37,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.58)",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(7,7,7,0.78)",
+  },
+  refreshSmallText: { color: "#F2CD70", fontSize: 19 },
+  categoriesScroll: { flexGrow: 0, height: 90, backgroundColor: "rgba(0,0,0,0.9)" },
+  categories: { paddingHorizontal: 8, height: 90, alignItems: "stretch" },
+  categoryItem: { width: 90, alignItems: "center", justifyContent: "center", position: "relative", paddingTop: 5 },
+  categoryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#0F0F0F",
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryIconActive: { backgroundColor: "rgba(110,0,14,0.24)", borderColor: DP.colors.primary },
+  categoryGlyph: { color: "#E9C96F", fontSize: 20, fontWeight: "700" },
   categoryGlyphActive: { color: DP.colors.primary },
-  categoryLabel: { color: "#777", fontSize: 10, marginTop: 6, fontWeight: "700", textAlign: "center" },
-  categoryLabelActive: { color: DP.colors.textSoft },
-  categoryLine: { position: "absolute", bottom: 0, width: 48, height: 2, borderRadius: 2, backgroundColor: DP.colors.gold },
-
-  stage: { flex: 1, paddingBottom: 78, backgroundColor: "#000" },
+  categoryLabel: { color: "#777", fontSize: 9, marginTop: 6, fontWeight: "700", textAlign: "center" },
+  categoryLabelActive: { color: "#F4F0ED" },
+  categoryLine: { position: "absolute", bottom: 0, width: 48, height: 2, borderRadius: 2, backgroundColor: "#E9B949" },
+  stage: { flex: 1, paddingBottom: 82, backgroundColor: "#000" },
   photo: { flex: 1, width: "100%", backgroundColor: "#111", overflow: "hidden" },
-  photoShadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 120, backgroundColor: "rgba(0,0,0,0.16)" },
-  photoShadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 250, backgroundColor: "rgba(0,0,0,0.62)" },
-  boostBadge: { position: "absolute", top: 16, left: 16, borderRadius: 999, backgroundColor: "rgba(229,29,50,0.92)", paddingHorizontal: 11, paddingVertical: 7, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
-  boostBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
-  profilePanel: { position: "absolute", left: 18, right: 92, bottom: 28 },
-  onlineRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 5 },
-  onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DP.colors.gold },
-  onlineText: { color: DP.colors.gold, fontSize: 12, fontWeight: "800" },
-  name: { color: "#fff", fontSize: 32, fontWeight: "900", letterSpacing: -0.8, textShadowColor: "#000", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
-  location: { color: "#E3DBD7", fontSize: 12, marginTop: 4, fontWeight: "700" },
-  bio: { color: "rgba(255,255,255,0.88)", fontSize: 14, lineHeight: 20, marginTop: 7, fontWeight: "600" },
-  actionsRail: { position: "absolute", right: 18, bottom: 24, gap: 12 },
-  actionButton: { width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", borderWidth: 1.2 },
-  likeButton: { backgroundColor: DP.colors.primary, borderColor: "rgba(255,255,255,0.16)", ...DP.shadow.primary },
-  goldButton: { backgroundColor: "rgba(255,255,255,0.92)", borderColor: DP.colors.gold },
-  darkButton: { backgroundColor: "rgba(10,10,10,0.86)", borderColor: "rgba(255,255,255,0.14)" },
-  likeGlyph: { color: "#fff", fontSize: 28 },
-  goldGlyph: { color: DP.colors.goldDark, fontSize: 25 },
-  skipGlyph: { color: "#fff", fontSize: 34, lineHeight: 36, fontWeight: "200" },
+  photoShadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 130, backgroundColor: "rgba(0,0,0,0.18)" },
+  photoShadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 280, backgroundColor: "rgba(0,0,0,0.64)" },
+  boostBadge: {
+    position: "absolute",
+    top: 18,
+    left: 18,
+    borderRadius: 999,
+    backgroundColor: "rgba(145,0,19,0.94)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "#F2C95F",
+  },
+  boostBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
+  profilePanel: { position: "absolute", left: 20, right: 92, bottom: 32 },
+  onlineRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 5 },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F2CD70" },
+  onlineText: { color: "#F2CD70", fontSize: 12, fontWeight: "800" },
+  name: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 34, lineHeight: 37, fontWeight: "700", textShadowColor: "#000", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
+  location: { color: "#EFE7E0", fontSize: 12, marginTop: 5, fontWeight: "700" },
+  bio: { color: "rgba(255,255,255,0.9)", fontSize: 14, lineHeight: 20, marginTop: 8, fontWeight: "500" },
+  actionsRail: { position: "absolute", right: 18, bottom: 26, gap: 12 },
+  actionButton: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", borderWidth: 1.2 },
+  likeButton: { backgroundColor: DP.colors.primary, borderColor: "#FF3653", shadowColor: DP.colors.primary, shadowOpacity: 0.45, shadowRadius: 10, elevation: 8 },
+  goldButton: { backgroundColor: "#F6F1E7", borderColor: "#F2CD70" },
+  darkButton: { backgroundColor: "rgba(7,7,7,0.9)", borderColor: "rgba(255,255,255,0.18)" },
+  likeGlyph: { color: "#FFF", fontSize: 29 },
+  goldGlyph: { color: "#9C6F16", fontSize: 27 },
+  skipGlyph: { color: "#FFF", fontSize: 36, lineHeight: 38, fontWeight: "200" },
   longPressHint: { position: "absolute", top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 5 },
-  longPressText: { color: "rgba(255,255,255,0.45)", fontSize: 9 },
-  noPhoto: { flex: 1, backgroundColor: "#0B0B0B", borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center", padding: 30 },
-  noPhotoCircle: { width: 92, height: 92, borderRadius: 46, backgroundColor: DP.colors.goldSoft, borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center" },
-  noPhotoInitial: { color: DP.colors.gold, fontSize: 34, fontWeight: "900" },
-  noPhotoTitle: { color: "#fff", fontSize: 27, fontWeight: "900", marginTop: 16 },
-  noPhotoText: { color: DP.colors.muted, textAlign: "center", marginTop: 7, lineHeight: 19 },
+  longPressText: { color: "rgba(255,255,255,0.48)", fontSize: 9 },
+  noPhoto: { flex: 1, backgroundColor: "rgba(9,8,7,0.94)", borderWidth: 1, borderColor: "rgba(233,185,73,0.48)", alignItems: "center", justifyContent: "center", padding: 30 },
+  noPhotoCircle: { width: 98, height: 98, borderRadius: 49, borderWidth: 2, borderColor: "#F2CD70", alignItems: "center", justifyContent: "center", backgroundColor: "#171108" },
+  noPhotoInitial: { color: "#F2CD70", fontFamily: DP_SERIF, fontSize: 42, fontWeight: "800" },
+  noPhotoTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 28, fontWeight: "700", marginTop: 18 },
+  noPhotoText: { color: "#8F8986", textAlign: "center", marginTop: 7, lineHeight: 19 },
   actionsNoPhoto: { flexDirection: "row", gap: 18, marginTop: 26 },
-  emptyWrap: { flex: 1, justifyContent: "center", paddingHorizontal: 18, paddingBottom: 80 },
-  reloadButton: { height: 54, borderRadius: 16, backgroundColor: DP.colors.primary, alignItems: "center", justifyContent: "center", marginTop: 12, ...DP.shadow.primary },
-  reloadText: { color: "#fff", fontWeight: "900" },
+  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26, paddingBottom: 105 },
+  emptyGlow: {
+    position: "absolute",
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: "rgba(145,0,18,0.18)",
+    top: "15%",
+  },
+  emptyLines: { flexDirection: "row", alignItems: "center", gap: 18 },
+  emptyLine: { width: 74, height: 1, backgroundColor: "rgba(233,185,73,0.65)" },
+  lockCircle: {
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    borderWidth: 2,
+    borderColor: "#F0C75C",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(20,7,7,0.85)",
+    shadowColor: DP.colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 22,
+    elevation: 8,
+  },
+  emptyTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 32, lineHeight: 37, fontWeight: "700", textAlign: "center", marginTop: 40 },
+  emptyText: { color: "#9C9591", fontSize: 14, textAlign: "center", lineHeight: 21, marginTop: 10 },
+  emptyButton: { width: "100%", marginTop: 34 },
 });
