@@ -125,10 +125,54 @@ export default function Layout() {
       <Drawer.Screen name="explore" options={{ drawerItemStyle: { display: "none" } }} />
       <Drawer.Screen name="cadastro" options={{ drawerItemStyle: { display: "none" } }} />
       <Drawer.Screen name="usuario" options={{ drawerItemStyle: { display: "none" } }} />
-      <Drawer.Screen name="chat" options={{ drawerItemStyle: { display: "none" } }} />
-      <Drawer.Screen name="videochamada" options={{ drawerItemStyle: { display: "none" } }} />
-      <Drawer.Screen name="transmitir" options={{ drawerItemStyle: { display: "none" } }} />
-      <Drawer.Screen name="live/[id]" options={{ drawerItemStyle: { display: "none" } }} />
+      <Drawer.Screen
+        name="chat"
+        options={{
+          drawerItemStyle: { display: "none" },
+          headerShown: true,
+          title: "Conversa",
+          headerStyle: { backgroundColor: "#050505" },
+          headerTintColor: "#F2CD70",
+          headerTitleStyle: { color: "#FFF", fontWeight: "800" },
+          headerShadowVisible: false,
+        }}
+      />
+      <Drawer.Screen
+        name="videochamada"
+        options={{
+          drawerItemStyle: { display: "none" },
+          headerShown: true,
+          title: "Videochamada",
+          headerStyle: { backgroundColor: "#050505" },
+          headerTintColor: "#F2CD70",
+          headerTitleStyle: { color: "#FFF", fontWeight: "800" },
+          headerShadowVisible: false,
+        }}
+      />
+      <Drawer.Screen
+        name="transmitir"
+        options={{
+          drawerItemStyle: { display: "none" },
+          headerShown: true,
+          title: "Transmitir ao vivo",
+          headerStyle: { backgroundColor: "#050505" },
+          headerTintColor: "#F2CD70",
+          headerTitleStyle: { color: "#FFF", fontWeight: "800" },
+          headerShadowVisible: false,
+        }}
+      />
+      <Drawer.Screen
+        name="live/[id]"
+        options={{
+          drawerItemStyle: { display: "none" },
+          headerShown: true,
+          title: "Ao vivo",
+          headerStyle: { backgroundColor: "#050505" },
+          headerTintColor: "#F2CD70",
+          headerTitleStyle: { color: "#FFF", fontWeight: "800" },
+          headerShadowVisible: false,
+        }}
+      />
     </Drawer>
   );
 }
