@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
+import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { api } from "../services/api";
 import { obterToken } from "../storage/auth";
@@ -111,18 +112,25 @@ export default function Fotos() {
   }
 
   if (loading) {
-    return <View style={styles.loading}><ActivityIndicator size="large" color={DP.colors.gold} /></View>;
+    return (
+      <LuxuryScreen>
+        <View style={styles.loading}><ActivityIndicator size="large" color={DP.colors.gold} /></View>
+      </LuxuryScreen>
+    );
   }
 
   return (
-    <View style={styles.page}>
+    <LuxuryScreen>
+      <LuxuryHeader />
       <View style={styles.content}>
-        <View style={styles.brandRow}>
-          <Text style={styles.brand}>DESEJO PROIBIDO</Text>
-          <View style={styles.counter}><Text style={styles.counterText}>{fotos.length} fotos</Text></View>
+        <View style={styles.headRow}>
+          <View style={{ flex: 1 }}>
+            <Eyebrow>MEU PERFIL</Eyebrow>
+            <Text style={styles.title}>Minhas fotos</Text>
+          </View>
+          <View style={styles.counter}><Text style={styles.counterText}>{fotos.length}/6</Text></View>
         </View>
-        <Text style={styles.title}>Galeria Premium</Text>
-        <Text style={styles.subtitle}>Sua foto principal aparece primeiro no seu perfil.</Text>
+        <Text style={styles.subtitle}>Sua foto principal aparece primeiro no perfil e no feed.</Text>
 
         <FlatList
           data={[{ id: "__add__", add: true }, ...fotos]}
@@ -131,10 +139,10 @@ export default function Fotos() {
           columnWrapperStyle={styles.columns}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }: any) => {
+          renderItem={({ item }: any) => {
             if (item.add) {
               return (
-                <Pressable style={styles.addCard} onPress={uploadFoto} disabled={uploading}>
+                <Pressable style={({ pressed }) => [styles.addCard, pressed && styles.pressed]} onPress={uploadFoto} disabled={uploading}>
                   <View style={styles.addCircle}><Text style={styles.addPlus}>+</Text></View>
                   <Text style={styles.addTitle}>{uploading ? "Enviando..." : "Adicionar foto"}</Text>
                   <Text style={styles.addSub}>JPG ou PNG</Text>
@@ -145,11 +153,12 @@ export default function Fotos() {
             return (
               <View style={[styles.card, item.principal && styles.cardPrincipal]}>
                 <Image source={{ uri: item.url }} style={styles.image} />
+                <View style={styles.imageShade} />
                 <Pressable style={styles.moreButton} onPress={() => removerFoto(item.id)}>
                   <Text style={styles.moreText}>•••</Text>
                 </Pressable>
                 {item.principal ? (
-                  <View style={styles.principalBadge}><Text style={styles.principalText}>Principal</Text></View>
+                  <View style={styles.principalBadge}><Text style={styles.principalText}>PRINCIPAL</Text></View>
                 ) : (
                   <Pressable style={styles.makePrincipal} onPress={() => definirPrincipal(item.id)}>
                     <Text style={styles.makePrincipalText}>Definir principal</Text>
@@ -162,47 +171,47 @@ export default function Fotos() {
             <View style={styles.infoCard}>
               <View style={styles.infoIcon}><Text style={styles.infoIconText}>♡</Text></View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.infoTitle}>Fotos nítidas recebem mais curtidas</Text>
-                <Text style={styles.infoText}>Escolha imagens claras e atuais para valorizar seu perfil.</Text>
+                <Text style={styles.infoTitle}>Fotos nítidas valorizam seu perfil</Text>
+                <Text style={styles.infoText}>Prefira imagens claras, atuais e que representem você de verdade.</Text>
               </View>
             </View>
           }
         />
       </View>
       <DPBottomNav />
-    </View>
+    </LuxuryScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#000" },
-  content: { flex: 1, paddingHorizontal: 15, paddingTop: 18 },
-  loading: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
-  brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brand: { color: DP.colors.gold, fontWeight: "900", fontSize: 14, letterSpacing: 1.1 },
-  counter: { borderRadius: 999, borderWidth: 1, borderColor: DP.colors.borderGold, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: DP.colors.goldSoft },
-  counterText: { color: DP.colors.gold, fontSize: 10, fontWeight: "800" },
-  title: { color: "#fff", fontSize: 29, fontWeight: "900", marginTop: 18, letterSpacing: -0.6 },
-  subtitle: { color: DP.colors.muted, fontSize: 12, marginTop: 4, marginBottom: 16 },
-  list: { paddingBottom: 115 },
+  loading: { flex: 1, alignItems: "center", justifyContent: "center" },
+  content: { flex: 1, paddingHorizontal: 20 },
+  headRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  counter: { minWidth: 48, height: 32, borderRadius: 16, borderWidth: 1, borderColor: "rgba(233,185,73,0.6)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(233,185,73,0.07)" },
+  counterText: { color: "#F1CD70", fontSize: 11, fontWeight: "800" },
+  title: { color: "#FFFDFC", fontFamily: DP_SERIF, fontSize: 34, lineHeight: 38, fontWeight: "700", marginTop: 12 },
+  subtitle: { color: "#8F8986", fontSize: 12, marginTop: 5, marginBottom: 18 },
+  list: { paddingBottom: 112 },
   columns: { gap: 10 },
-  card: { flex: 1, minHeight: 214, borderRadius: 18, overflow: "hidden", backgroundColor: "#101010", marginBottom: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", position: "relative" },
-  cardPrincipal: { borderColor: DP.colors.gold, ...DP.shadow.gold },
-  image: { width: "100%", height: 214, resizeMode: "cover" },
-  moreButton: { position: "absolute", right: 8, top: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(0,0,0,0.68)", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
-  moreText: { color: "#fff", fontWeight: "900", fontSize: 12, marginTop: -4 },
-  principalBadge: { position: "absolute", left: 9, bottom: 9, borderRadius: 999, backgroundColor: DP.colors.gold, paddingHorizontal: 9, paddingVertical: 5 },
-  principalText: { color: "#171000", fontSize: 9, fontWeight: "900" },
-  makePrincipal: { position: "absolute", left: 8, right: 8, bottom: 8, height: 31, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.72)", borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center" },
-  makePrincipalText: { color: DP.colors.gold, fontSize: 9, fontWeight: "800" },
-  addCard: { flex: 1, minHeight: 214, borderRadius: 18, borderWidth: 1, borderStyle: "dashed", borderColor: DP.colors.gold, backgroundColor: "#080808", alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  addCircle: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: DP.colors.gold, alignItems: "center", justifyContent: "center" },
-  addPlus: { color: DP.colors.gold, fontSize: 32, fontWeight: "300", lineHeight: 34 },
-  addTitle: { color: DP.colors.gold, fontSize: 12, fontWeight: "800", marginTop: 10 },
-  addSub: { color: DP.colors.dim, fontSize: 9, marginTop: 3 },
-  infoCard: { minHeight: 84, borderRadius: 17, backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: DP.colors.border, flexDirection: "row", alignItems: "center", padding: 13, marginTop: 5 },
-  infoIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: DP.colors.primarySoft, borderWidth: 1, borderColor: DP.colors.borderStrong, alignItems: "center", justifyContent: "center", marginRight: 12 },
-  infoIconText: { color: DP.colors.gold, fontSize: 25 },
-  infoTitle: { color: "#fff", fontSize: 13, fontWeight: "900" },
-  infoText: { color: DP.colors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  card: { flex: 1, minHeight: 230, borderRadius: 18, overflow: "hidden", backgroundColor: "#101010", marginBottom: 10, borderWidth: 1, borderColor: "rgba(233,185,73,0.18)", position: "relative" },
+  cardPrincipal: { borderColor: "#F2CD70", shadowColor: "#F2CD70", shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 },
+  image: { width: "100%", height: 230, resizeMode: "cover" },
+  imageShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 80, backgroundColor: "rgba(0,0,0,0.42)" },
+  moreButton: { position: "absolute", right: 8, top: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.72)", borderWidth: 1, borderColor: "rgba(233,185,73,0.3)", alignItems: "center", justifyContent: "center" },
+  moreText: { color: "#FFF", fontWeight: "900", fontSize: 12, marginTop: -4 },
+  principalBadge: { position: "absolute", left: 9, bottom: 9, borderRadius: 999, backgroundColor: "#E7B84C", paddingHorizontal: 9, paddingVertical: 5 },
+  principalText: { color: "#171000", fontSize: 8, fontWeight: "900", letterSpacing: 0.7 },
+  makePrincipal: { position: "absolute", left: 8, right: 8, bottom: 8, height: 32, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.76)", borderWidth: 1, borderColor: "#E7B84C", alignItems: "center", justifyContent: "center" },
+  makePrincipalText: { color: "#F0CC70", fontSize: 9, fontWeight: "800" },
+  addCard: { flex: 1, minHeight: 230, borderRadius: 18, borderWidth: 1, borderStyle: "dashed", borderColor: "#E7B84C", backgroundColor: "rgba(8,7,6,0.94)", alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  addCircle: { width: 56, height: 56, borderRadius: 28, borderWidth: 1.5, borderColor: "#E7B84C", alignItems: "center", justifyContent: "center" },
+  addPlus: { color: "#E7B84C", fontSize: 34, fontWeight: "300", lineHeight: 36 },
+  addTitle: { color: "#F0CC70", fontFamily: DP_SERIF, fontSize: 14, fontWeight: "700", marginTop: 11 },
+  addSub: { color: "#6F6965", fontSize: 9, marginTop: 3 },
+  infoCard: { minHeight: 92, borderRadius: 17, backgroundColor: "rgba(9,7,6,0.95)", borderWidth: 1, borderColor: "rgba(233,185,73,0.24)", flexDirection: "row", alignItems: "center", padding: 14, marginTop: 6 },
+  infoIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: "rgba(126,0,17,0.25)", borderWidth: 1, borderColor: "rgba(229,29,50,0.45)", alignItems: "center", justifyContent: "center", marginRight: 12 },
+  infoIconText: { color: "#F0CC70", fontSize: 27 },
+  infoTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 14, fontWeight: "700" },
+  infoText: { color: "#8F8986", fontSize: 10, lineHeight: 15, marginTop: 4 },
+  pressed: { opacity: 0.72 },
 });
