@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { Kicker, Pill, PrimaryButton, SectionHeader, StatCard } from "../components/ui/dp-ui";
+import { DP_SERIF, GoldButton, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP, dpNumber } from "../constants/dp-theme";
 import {
   CriadoraStatus,
@@ -29,13 +29,6 @@ function moneyFromCentavos(value: number) {
   return (Number(value || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function statusTone(status: string): "neutral" | "primary" | "success" | "gold" {
-  if (status === "APROVADA" || status === "PAGO") return "success";
-  if (status === "PENDENTE" || status === "APROVADO") return "gold";
-  if (status === "BLOQUEADA" || status === "REPROVADA" || status === "RECUSADO") return "primary";
-  return "neutral";
-}
-
 function statusLabel(value: string) {
   return String(value || "").replace(/_/g, " ");
 }
@@ -45,23 +38,29 @@ export default function CriadoraScreen() {
   const [financeiro, setFinanceiro] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [acao, setAcao] = useState(false);
+  const [erro, setErro] = useState("");
   const [valor, setValor] = useState("");
   const [pix, setPix] = useState("");
   const [pixType, setPixType] = useState<(typeof pixTypes)[number]>("CPF");
+  const [mostrarSaque, setMostrarSaque] = useState(false);
+  const [aba, setAba] = useState<"PENDENTES" | "DISPONIVEIS" | "SAQUES">("DISPONIVEIS");
 
   const carregar = useCallback(async () => {
     try {
+      setErro("");
       const s = await statusCriadora();
       setStatus(s);
       if (s.creatorStatus !== "NAO_SOLICITADO" || s.elegivelParaSolicitar) {
         try {
           setFinanceiro(await financeiroCriadora());
-        } catch {
+        } catch (e: any) {
           setFinanceiro(null);
+          setErro(apiErrorMessage(e, "Não foi possível carregar o financeiro da criadora."));
         }
       }
     } catch (e: any) {
-      Alert.alert("Erro", apiErrorMessage(e));
+      setStatus(null);
+      setErro(apiErrorMessage(e, "Não foi possível carregar a Área da Criadora."));
     } finally {
       setLoading(false);
     }
@@ -87,11 +86,12 @@ export default function CriadoraScreen() {
   }, [carregar]);
 
   const config = financeiro?.configuracao || status?.configuracaoFinanceira || {};
+  const centsPerCredit = Number(config?.creditoValorCentavos || config?.centavosPorCredito || 1);
+
   const estimado = useMemo(() => {
     const creditos = Number(valor || 0);
-    const centsPerCredit = Number(config?.creditoValorCentavos || config?.centavosPorCredito || 1);
     return moneyFromCentavos(creditos * centsPerCredit);
-  }, [valor, config]);
+  }, [valor, centsPerCredit]);
 
   async function solicitarAprovacao() {
     try {
@@ -122,6 +122,7 @@ export default function CriadoraScreen() {
             await solicitarSaqueCriadora({ valorCreditos, chavePix: pix.trim(), tipoChavePix: pixType });
             setValor("");
             setPix("");
+            setMostrarSaque(false);
             await carregar();
             Alert.alert("Saque solicitado", "O valor foi reservado e enviado para análise.");
           } catch (e: any) {
@@ -135,200 +136,424 @@ export default function CriadoraScreen() {
   }
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={DP.colors.primary} /></View>;
+    return (
+      <LuxuryScreen>
+        <View style={styles.center}><ActivityIndicator size="large" color={DP.colors.gold} /></View>
+      </LuxuryScreen>
+    );
   }
 
-  if (!status) return null;
+  if (!status) {
+    return (
+      <LuxuryScreen>
+        <LuxuryHeader />
+        <View style={styles.errorState}>
+          <Text style={styles.errorStateIcon}>!</Text>
+          <Text style={styles.errorStateTitle}>Área da Criadora indisponível</Text>
+          <Text style={styles.errorStateText}>{erro || "Não foi possível carregar os dados agora."}</Text>
+          <View style={{ width: "100%", marginTop: 22 }}>
+            <GoldButton title="Tentar novamente" onPress={carregar} red />
+          </View>
+        </View>
+        <DPBottomNav />
+      </LuxuryScreen>
+    );
+  }
 
+  const disponivel = Number(financeiro?.carteira?.disponivel ?? status.carteira.disponivel ?? 0);
+  const bloqueado = Number(financeiro?.carteira?.bloqueado ?? status.carteira.bloqueado ?? 0);
   const ganhoCentavos = Number(financeiro?.ganhos?.valorCentavosEstimado || 0);
-  const disponivel = financeiro?.carteira?.disponivel ?? status.carteira.disponivel;
-  const bloqueado = financeiro?.carteira?.bloqueado ?? status.carteira.bloqueado;
-  const ganhos = financeiro?.ganhos?.creditos ?? 0;
-  const lives = financeiro?.lives?.length ?? 0;
+  const ganhos = Number(financeiro?.ganhos?.creditos ?? 0);
+  const lives = financeiro?.lives || [];
+  const saques = financeiro?.saques || [];
+  const topApoiadores = financeiro?.topApoiadores || [];
+
+  const pendingMoney = moneyFromCentavos(bloqueado * centsPerCredit);
+  const availableMoney = moneyFromCentavos(disponivel * centsPerCredit);
+
+  const chartValues = Array.from({ length: 7 }).map((_, index) => {
+    const item = lives[Math.max(0, lives.length - 7) + index];
+    return Number(item?.creditosGanhos ?? item?.ganhosCreditos ?? item?.creditos ?? 0);
+  });
+  const chartMax = Math.max(...chartValues, 1);
 
   return (
-    <View style={styles.page}>
+    <LuxuryScreen>
+      <LuxuryHeader action={<Text style={styles.bell}>♧</Text>} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Kicker>CREATOR CENTER</Kicker>
-        <Text style={styles.title}>Sua operação de criadora em um só lugar.</Text>
-        <Text style={styles.subtitle}>Transmita, acompanhe seus ganhos e solicite seus saques com clareza.</Text>
-
-        <View style={styles.statusCard}>
-          <View style={styles.statusGlow} />
-          <View style={styles.statusTop}>
-            <Pill tone={statusTone(status.creatorStatus)}>{statusLabel(status.creatorStatus)}</Pill>
-            <Text style={styles.statusAge}>{status.idade ?? "-"} anos</Text>
-          </View>
-          <Text style={styles.creatorName}>{status.nome || "Seu perfil"}</Text>
-          <Text style={styles.statusText}>
-            {status.podeTransmitir
-              ? "Sua conta está pronta para transmitir e receber ganhos."
-              : status.creatorStatus === "PENDENTE"
-                ? "Sua solicitação está em análise."
-                : "Conclua a aprovação para liberar transmissões e monetização."}
-          </Text>
-        </View>
-
-        {status.creatorMotivo ? <Text style={styles.warning}>{status.creatorMotivo}</Text> : null}
-
-        {!status.elegivelParaSolicitar && status.creatorStatus === "NAO_SOLICITADO" ? (
-          <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>Conta ainda não elegível</Text>
-            <Text style={styles.infoText}>O perfil precisa ser feminino, estar ativo e ter 18 anos ou mais.</Text>
-          </View>
-        ) : null}
-
-        {status.elegivelParaSolicitar && !status.podeTransmitir && status.creatorStatus !== "PENDENTE" ? (
-          <PrimaryButton title={acao ? "Enviando..." : "Solicitar aprovação"} subtitle="Enviar perfil para análise" onPress={solicitarAprovacao} disabled={acao} />
-        ) : null}
-
-        {status.creatorStatus === "PENDENTE" ? (
-          <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>Em análise</Text>
-            <Text style={styles.infoText}>O administrador precisa aprovar sua conta antes da primeira transmissão.</Text>
-          </View>
-        ) : null}
-
-        {status.podeTransmitir ? (
+        {!status.podeTransmitir ? (
           <>
-            <View style={styles.liveCard}>
-              <View style={styles.liveIndicator}><View style={styles.liveDot} /><Text style={styles.liveIndicatorText}>AO VIVO</Text></View>
-              <Text style={styles.liveTitle}>Pronta para começar?</Text>
-              <Text style={styles.liveText}>Abra a câmera, defina sua meta e acompanhe chat e presentes em tempo real.</Text>
-              <PrimaryButton title="Abrir uma live" subtitle="Transmitir agora" onPress={() => router.push("/transmitir")} />
+            <Text style={styles.preTitle}>CREATOR CENTER</Text>
+            <Text style={styles.title}>Área da Criadora</Text>
+            <Text style={styles.subtitle}>Transmita, acompanhe seus ganhos e solicite saques.</Text>
+
+            <View style={styles.statusCard}>
+              <View style={styles.statusTop}>
+                <Text style={styles.statusLabel}>STATUS DA CONTA</Text>
+                <Text style={styles.statusAge}>{status.idade ?? "-"} anos</Text>
+              </View>
+              <Text style={styles.statusValue}>{statusLabel(status.creatorStatus)}</Text>
+              <Text style={styles.creatorName}>{status.nome || "Seu perfil"}</Text>
             </View>
 
-            <SectionHeader title="Visão financeira" />
-            <View style={styles.grid}>
-              <StatCard label="Disponível" value={dpNumber(disponivel)} helper="créditos" accent />
-              <StatCard label="Bloqueado" value={dpNumber(bloqueado)} helper="em análise" />
+            {status.creatorMotivo ? <Text style={styles.warning}>{status.creatorMotivo}</Text> : null}
+            {!!erro ? <Text style={styles.warning}>{erro}</Text> : null}
+
+            {!status.elegivelParaSolicitar && status.creatorStatus === "NAO_SOLICITADO" ? (
+              <View style={styles.infoBox}>
+                <Text style={styles.infoTitle}>Conta ainda não elegível</Text>
+                <Text style={styles.infoText}>O perfil precisa ser feminino, estar ativo e ter 18 anos ou mais.</Text>
+              </View>
+            ) : null}
+
+            {status.elegivelParaSolicitar && status.creatorStatus !== "PENDENTE" ? (
+              <GoldButton title={acao ? "Enviando..." : "Solicitar aprovação"} onPress={solicitarAprovacao} disabled={acao} red />
+            ) : null}
+
+            {status.creatorStatus === "PENDENTE" ? (
+              <View style={styles.infoBox}>
+                <Text style={styles.infoTitle}>Em análise</Text>
+                <Text style={styles.infoText}>O administrador precisa aprovar sua conta antes da primeira transmissão.</Text>
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <View style={styles.gainsTitleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>Meus Ganhos</Text>
+                <Text style={styles.subtitle}>Seu talento vale mais aqui</Text>
+              </View>
+              <Text style={styles.heart}>♡</Text>
             </View>
-            <View style={styles.gridSecondary}>
-              <StatCard label="Ganhos" value={dpNumber(ganhos)} helper={moneyFromCentavos(ganhoCentavos)} />
-              <StatCard label="Lives" value={dpNumber(lives)} helper="recentes" />
+
+            {!!erro ? <Text style={styles.warning}>{erro}</Text> : null}
+
+            <View style={styles.moneyGrid}>
+              <View style={[styles.moneyCard, styles.pendingCard]}>
+                <Text style={styles.moneyIcon}>◷</Text>
+                <Text style={styles.moneyLabel}>Saldo pendente</Text>
+                <Text style={styles.moneyValue}>{pendingMoney}</Text>
+                <Text style={styles.moneyHelper}>{bloqueado > 0 ? "Aguardando liberação" : "Nada pendente"}</Text>
+              </View>
+              <View style={[styles.moneyCard, styles.availableCard]}>
+                <Text style={styles.moneyIcon}>▱</Text>
+                <Text style={styles.moneyLabel}>Saldo disponível</Text>
+                <Text style={styles.moneyValue}>{availableMoney}</Text>
+                <Pressable style={styles.withdrawMini} onPress={() => setMostrarSaque((old) => !old)}>
+                  <Text style={styles.withdrawMiniText}>Solicitar saque</Text>
+                  <Text style={styles.withdrawMiniArrow}>›</Text>
+                </Pressable>
+              </View>
             </View>
 
-            <View style={styles.payoutCard}>
-              <Text style={styles.payoutKicker}>SAQUE PIX</Text>
-              <Text style={styles.payoutTitle}>Retirar seus ganhos</Text>
-              <Text style={styles.payoutText}>Os créditos ficam bloqueados enquanto o saque estiver em análise.</Text>
+            <View style={styles.tabs}>
+              {(["PENDENTES", "DISPONIVEIS", "SAQUES"] as const).map((item) => (
+                <Pressable key={item} style={[styles.tab, aba === item && styles.tabActive]} onPress={() => setAba(item)}>
+                  <Text style={[styles.tabText, aba === item && styles.tabTextActive]}>
+                    {item === "PENDENTES" ? "Pendentes" : item === "DISPONIVEIS" ? "Disponíveis" : "Saques"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
-              <TextInput
-                value={valor}
-                onChangeText={setValor}
-                keyboardType="number-pad"
-                placeholder="Valor em créditos"
-                placeholderTextColor={DP.colors.dim}
-                style={styles.input}
-              />
+            {mostrarSaque ? (
+              <View style={styles.payoutCard}>
+                <Text style={styles.sectionTitle}>Solicitar saque PIX</Text>
+                <Text style={styles.sectionSub}>Os créditos ficam bloqueados enquanto o saque estiver em análise.</Text>
 
-              <View style={styles.chips}>
-                {pixTypes.map((type) => (
-                  <Pressable key={type} onPress={() => setPixType(type)} style={[styles.chip, pixType === type && styles.chipActive]}>
-                    <Text style={[styles.chipText, pixType === type && styles.chipTextActive]}>{type}</Text>
-                  </Pressable>
+                <TextInput
+                  value={valor}
+                  onChangeText={setValor}
+                  keyboardType="number-pad"
+                  placeholder="Valor em créditos"
+                  placeholderTextColor="#726A66"
+                  style={styles.input}
+                />
+
+                <View style={styles.chips}>
+                  {pixTypes.map((type) => (
+                    <Pressable key={type} onPress={() => setPixType(type)} style={[styles.chip, pixType === type && styles.chipActive]}>
+                      <Text style={[styles.chipText, pixType === type && styles.chipTextActive]}>{type}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <TextInput
+                  value={pix}
+                  onChangeText={setPix}
+                  placeholder="Chave PIX"
+                  autoCapitalize="none"
+                  placeholderTextColor="#726A66"
+                  style={styles.input}
+                />
+
+                {!!valor ? <Text style={styles.estimate}>Estimativa: {estimado}</Text> : null}
+                <GoldButton title={acao ? "Processando..." : "Confirmar saque"} onPress={pedirSaque} disabled={acao} />
+              </View>
+            ) : null}
+
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Resumo dos ganhos</Text>
+              <Text style={styles.period}>Últimos 7 dias⌄</Text>
+            </View>
+
+            <View style={styles.chart}>
+              <View style={styles.axisLine} />
+              <View style={styles.bars}>
+                {chartValues.map((value, index) => (
+                  <View key={index} style={styles.barCol}>
+                    <View style={[styles.bar, { height: 24 + Math.round((value / chartMax) * 72) }]} />
+                    <Text style={styles.barLabel}>{["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][index]}</Text>
+                  </View>
                 ))}
               </View>
-
-              <TextInput
-                value={pix}
-                onChangeText={setPix}
-                placeholder="Chave PIX"
-                autoCapitalize="none"
-                placeholderTextColor={DP.colors.dim}
-                style={styles.input}
-              />
-
-              {!!valor ? <Text style={styles.estimate}>Estimativa: {estimado}</Text> : null}
-              <PrimaryButton title={acao ? "Processando..." : "Solicitar saque"} subtitle="Enviar solicitação para análise" onPress={pedirSaque} disabled={acao} />
             </View>
 
-            <SectionHeader title="Últimos saques" />
-            {(financeiro?.saques || []).length ? (financeiro.saques || []).slice(0, 8).map((s: any) => (
-              <View key={s.id} style={styles.rowCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{dpNumber(s.valorCreditos)} créditos</Text>
-                  <Text style={styles.rowSub}>{moneyFromCentavos(s.valorCentavos)} • {s.tipoChavePix}</Text>
-                </View>
-                <Pill tone={statusTone(s.status)}>{statusLabel(s.status)}</Pill>
-              </View>
-            )) : <Text style={styles.emptyText}>Nenhum saque solicitado até agora.</Text>}
+            <View style={styles.revenueRows}>
+              <RevenueRow icon="▣" label="Presentes e lives" value={moneyFromCentavos(ganhoCentavos)} />
+              <RevenueRow icon="▤" label="Conteúdo exclusivo" value="Em breve" muted />
+            </View>
 
-            <SectionHeader title="Top apoiadores" />
-            {(financeiro?.topApoiadores || []).length ? financeiro.topApoiadores.map((a: any, index: number) => (
-              <View key={a.userId} style={styles.supporter}>
-                <View style={styles.position}><Text style={styles.positionText}>{index + 1}</Text></View>
-                <Text style={styles.supporterName}>{a.nome}</Text>
-                <Text style={styles.supporterCredits}>{dpNumber(a.creditos)} cr.</Text>
+            <View style={styles.liveButtonWrap}>
+              <GoldButton title="Abrir uma live agora" onPress={() => router.push("/transmitir")} red />
+            </View>
+
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Últimas movimentações</Text>
+              <Text style={styles.period}>{dpNumber(ganhos)} créditos</Text>
+            </View>
+
+            {saques.length ? saques.slice(0, 5).map((s: any) => (
+              <View key={s.id} style={styles.movement}>
+                <View style={styles.movementIcon}><Text style={styles.movementIconText}>↓</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.movementTitle}>Saque solicitado</Text>
+                  <Text style={styles.movementSub}>{statusLabel(s.status)} • {s.tipoChavePix}</Text>
+                </View>
+                <Text style={styles.movementNegative}>- {moneyFromCentavos(Number(s.valorCentavos || 0))}</Text>
               </View>
-            )) : <Text style={styles.emptyText}>Seu ranking aparecerá depois dos primeiros presentes.</Text>}
+            )) : (
+              <View style={styles.emptyMovement}>
+                <Text style={styles.emptyMovementText}>Suas movimentações aparecerão aqui.</Text>
+              </View>
+            )}
+
+            {topApoiadores.length ? (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 10 }]}>Top apoiadores</Text>
+                {topApoiadores.slice(0, 5).map((a: any, index: number) => (
+                  <View key={a.userId} style={styles.supporter}>
+                    <View style={styles.supporterPos}><Text style={styles.supporterPosText}>{index + 1}</Text></View>
+                    <Text style={styles.supporterName}>{a.nome}</Text>
+                    <Text style={styles.supporterCredits}>{dpNumber(a.creditos)} cr.</Text>
+                  </View>
+                ))}
+              </>
+            ) : null}
+
+            <View style={styles.notice}>
+              <Text style={styles.noticeIcon}>ⓘ</Text>
+              <Text style={styles.noticeText}>Saques seguem a análise e o prazo definidos pela plataforma.</Text>
+            </View>
           </>
-        ) : null}
+        )}
       </ScrollView>
       <DPBottomNav />
+    </LuxuryScreen>
+  );
+}
+
+function RevenueRow({ icon, label, value, muted = false }: { icon: string; label: string; value: string; muted?: boolean }) {
+  return (
+    <View style={styles.revenueRow}>
+      <View style={styles.revenueIcon}><Text style={styles.revenueIconText}>{icon}</Text></View>
+      <Text style={styles.revenueLabel}>{label}</Text>
+      <Text style={[styles.revenueValue, muted && styles.revenueMuted]}>{value}</Text>
+      <Text style={styles.revenueArrow}>›</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: DP.colors.background },
-  content: { padding: 18, paddingTop: 22, paddingBottom: 112 },
-  center: { flex: 1, backgroundColor: DP.colors.background, alignItems: "center", justifyContent: "center" },
-  title: { color: DP.colors.text, fontSize: 31, lineHeight: 35, fontWeight: "900", letterSpacing: -1, marginTop: 8 },
-  subtitle: { color: DP.colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8, marginBottom: 18, maxWidth: 370 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  content: { paddingHorizontal: 20, paddingBottom: 116 },
+  bell: { color: "#F1CE75", fontSize: 24 },
+  preTitle: { color: "#F1CE75", fontSize: 10, fontWeight: "900", letterSpacing: 2.6, marginTop: 10 },
+  gainsTitleRow: { flexDirection: "row", alignItems: "flex-start", marginTop: 4 },
+  title: { color: "#FFFDFC", fontFamily: DP_SERIF, fontSize: 38, lineHeight: 42, fontWeight: "700" },
+  subtitle: { color: "#9C9591", fontSize: 13, lineHeight: 18, marginTop: 3, marginBottom: 18 },
+  heart: { color: "#F2CD70", fontSize: 34, marginTop: 1 },
   statusCard: {
-    overflow: "hidden",
-    backgroundColor: DP.colors.surface,
-    borderRadius: DP.radius.xl,
-    padding: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: DP.colors.border,
+    borderColor: "rgba(233,185,73,0.58)",
+    backgroundColor: "rgba(9,7,6,0.94)",
+    padding: 18,
     marginBottom: 14,
-    ...DP.shadow.card,
   },
-  statusGlow: { position: "absolute", width: 150, height: 150, borderRadius: 75, right: -50, top: -60, backgroundColor: "rgba(255,45,85,0.08)" },
   statusTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  statusAge: { color: DP.colors.dim, fontSize: 11, fontWeight: "800" },
-  creatorName: { color: DP.colors.text, fontSize: 24, fontWeight: "900", marginTop: 14, letterSpacing: -0.5 },
-  statusText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
-  warning: { backgroundColor: "rgba(255,99,122,0.08)", color: DP.colors.danger, padding: 12, borderRadius: DP.radius.md, borderWidth: 1, borderColor: "rgba(255,99,122,0.22)", marginBottom: 12 },
-  infoBox: { backgroundColor: DP.colors.surface, borderRadius: DP.radius.lg, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: DP.colors.border },
-  infoTitle: { color: DP.colors.text, fontWeight: "900", fontSize: 16 },
-  infoText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
-  liveCard: {
-    backgroundColor: "#1A0C11",
-    borderRadius: DP.radius.xl,
-    padding: 18,
+  statusLabel: { color: "#978B84", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  statusAge: { color: "#8F8986", fontSize: 11 },
+  statusValue: { color: "#F2CD70", fontFamily: DP_SERIF, fontSize: 24, fontWeight: "700", marginTop: 8 },
+  creatorName: { color: "#FFF", fontSize: 13, marginTop: 4 },
+  warning: {
+    color: "#FFD1D7",
+    backgroundColor: "rgba(130,0,17,0.26)",
     borderWidth: 1,
-    borderColor: DP.colors.borderStrong,
-    marginBottom: 24,
-    ...DP.shadow.card,
+    borderColor: "rgba(229,29,50,0.35)",
+    padding: 12,
+    borderRadius: 13,
+    marginBottom: 12,
+    fontSize: 12,
   },
-  liveIndicator: { flexDirection: "row", alignItems: "center", gap: 6 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DP.colors.primary },
-  liveIndicatorText: { color: DP.colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
-  liveTitle: { color: DP.colors.text, fontSize: 23, fontWeight: "900", marginTop: 10, letterSpacing: -0.5 },
-  liveText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5, marginBottom: 15 },
-  grid: { flexDirection: "row", gap: 10 },
-  gridSecondary: { flexDirection: "row", gap: 10, marginTop: 10, marginBottom: 22 },
-  payoutCard: { backgroundColor: DP.colors.surface, borderRadius: DP.radius.xl, padding: 17, borderWidth: 1, borderColor: DP.colors.border, marginBottom: 24 },
-  payoutKicker: { color: DP.colors.gold, fontSize: 10, fontWeight: "900", letterSpacing: 1.3 },
-  payoutTitle: { color: DP.colors.text, fontSize: 20, fontWeight: "900", marginTop: 7 },
-  payoutText: { color: DP.colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  input: { backgroundColor: DP.colors.surface2, color: DP.colors.text, paddingHorizontal: 14, minHeight: 52, borderRadius: DP.radius.md, borderWidth: 1, borderColor: DP.colors.border, marginTop: 12 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
-  chip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: DP.radius.pill, backgroundColor: DP.colors.surface2, borderWidth: 1, borderColor: DP.colors.border },
-  chipActive: { backgroundColor: DP.colors.primarySoft, borderColor: DP.colors.borderStrong },
-  chipText: { color: DP.colors.muted, fontSize: 10, fontWeight: "900" },
-  chipTextActive: { color: "#FF91A7" },
-  estimate: { color: DP.colors.gold, fontSize: 12, fontWeight: "800", marginTop: 10, marginBottom: 2 },
-  rowCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DP.colors.surface, borderRadius: DP.radius.lg, padding: 14, borderWidth: 1, borderColor: DP.colors.border, marginBottom: 9 },
-  rowTitle: { color: DP.colors.text, fontWeight: "900", fontSize: 14 },
-  rowSub: { color: DP.colors.muted, fontSize: 11, marginTop: 4 },
-  supporter: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DP.colors.surface, borderRadius: DP.radius.md, padding: 13, borderWidth: 1, borderColor: DP.colors.border, marginBottom: 8 },
-  position: { width: 30, height: 30, borderRadius: 11, backgroundColor: DP.colors.primarySoft, alignItems: "center", justifyContent: "center" },
-  positionText: { color: DP.colors.primary, fontWeight: "900" },
-  supporterName: { flex: 1, color: DP.colors.textSoft, fontWeight: "800" },
-  supporterCredits: { color: DP.colors.gold, fontWeight: "900", fontSize: 12 },
-  emptyText: { color: DP.colors.muted, fontSize: 12, marginBottom: 22 },
+  infoBox: {
+    backgroundColor: "rgba(8,7,6,0.94)",
+    borderRadius: 17,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.35)",
+  },
+  infoTitle: { color: "#FFF", fontFamily: DP_SERIF, fontWeight: "700", fontSize: 18 },
+  infoText: { color: "#9C9591", fontSize: 12, lineHeight: 18, marginTop: 5 },
+  moneyGrid: { flexDirection: "row", gap: 10 },
+  moneyCard: {
+    flex: 1,
+    minHeight: 154,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 15,
+    justifyContent: "flex-start",
+  },
+  pendingCard: { backgroundColor: "rgba(96,0,14,0.32)", borderColor: "rgba(229,29,50,0.45)" },
+  availableCard: { backgroundColor: "rgba(23,17,7,0.9)", borderColor: "rgba(233,185,73,0.68)" },
+  moneyIcon: { color: "#F0D17D", fontSize: 22 },
+  moneyLabel: { color: "#C9C0BA", fontSize: 11, marginTop: 6 },
+  moneyValue: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 25, lineHeight: 29, fontWeight: "700", marginTop: 8 },
+  moneyHelper: { color: "#A69D97", fontSize: 10, marginTop: 6 },
+  withdrawMini: {
+    height: 38,
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: "#E2B44B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  withdrawMiniText: { color: "#1C1100", fontFamily: DP_SERIF, fontSize: 12, fontWeight: "800" },
+  withdrawMiniArrow: { position: "absolute", right: 10, color: "#1C1100", fontSize: 20 },
+  tabs: { flexDirection: "row", gap: 7, marginTop: 16, marginBottom: 18 },
+  tab: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+    backgroundColor: "rgba(15,11,10,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabActive: { backgroundColor: "rgba(140,0,19,0.48)", borderColor: DP.colors.primary },
+  tabText: { color: "#CBC2BC", fontSize: 10, fontWeight: "700" },
+  tabTextActive: { color: "#FFF" },
+  payoutCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.55)",
+    backgroundColor: "rgba(8,7,6,0.96)",
+    padding: 16,
+    marginBottom: 18,
+  },
+  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4, marginBottom: 12 },
+  sectionTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 21, fontWeight: "700" },
+  sectionSub: { color: "#8F8986", fontSize: 11, lineHeight: 17, marginTop: 4 },
+  period: { color: "#B8AAA1", fontSize: 10 },
+  input: {
+    backgroundColor: "#0F0E0D",
+    color: "#FFF",
+    paddingHorizontal: 14,
+    minHeight: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.28)",
+    marginTop: 11,
+  },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 11 },
+  chip: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, backgroundColor: "#11100F", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  chipActive: { backgroundColor: "rgba(145,0,18,0.35)", borderColor: DP.colors.primary },
+  chipText: { color: "#948B86", fontSize: 9, fontWeight: "800" },
+  chipTextActive: { color: "#FFF" },
+  estimate: { color: "#F1CE75", fontSize: 11, fontWeight: "800", marginTop: 9, marginBottom: 10 },
+  chart: {
+    height: 150,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.12)",
+    backgroundColor: "rgba(7,6,5,0.55)",
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  axisLine: { position: "absolute", left: 12, right: 12, bottom: 31, height: 1, backgroundColor: "rgba(233,185,73,0.3)" },
+  bars: { flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  barCol: { flex: 1, alignItems: "center", justifyContent: "flex-end", height: "100%" },
+  bar: {
+    width: 22,
+    minHeight: 24,
+    maxHeight: 96,
+    borderRadius: 3,
+    backgroundColor: "#E1B34A",
+    borderWidth: 1,
+    borderColor: "#F7D77A",
+  },
+  barLabel: { color: "#8D8580", fontSize: 8, marginTop: 5 },
+  revenueRows: { marginTop: 14, gap: 7 },
+  revenueRow: {
+    minHeight: 62,
+    borderRadius: 13,
+    backgroundColor: "rgba(23,12,9,0.86)",
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.14)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  revenueIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(145,0,18,0.42)", borderWidth: 1, borderColor: "rgba(229,29,50,0.5)", alignItems: "center", justifyContent: "center" },
+  revenueIconText: { color: "#F2CF77", fontSize: 18 },
+  revenueLabel: { flex: 1, color: "#FFF", fontSize: 13, marginLeft: 10 },
+  revenueValue: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 16, fontWeight: "700" },
+  revenueMuted: { color: "#8F8986", fontFamily: undefined, fontSize: 11 },
+  revenueArrow: { color: "#B9AEA7", fontSize: 24, marginLeft: 8 },
+  liveButtonWrap: { marginVertical: 18 },
+  movement: {
+    minHeight: 66,
+    borderRadius: 13,
+    backgroundColor: "rgba(20,12,9,0.84)",
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.12)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    marginBottom: 7,
+  },
+  movementIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(145,0,18,0.35)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(229,29,50,0.5)" },
+  movementIconText: { color: "#FFF", fontSize: 20 },
+  movementTitle: { color: "#FFF", fontSize: 12, fontWeight: "700", marginLeft: 10 },
+  movementSub: { color: "#8F8986", fontSize: 9, marginLeft: 10, marginTop: 3 },
+  movementNegative: { color: "#FF445E", fontSize: 12, fontWeight: "800" },
+  emptyMovement: { paddingVertical: 18, alignItems: "center" },
+  emptyMovementText: { color: "#8F8986", fontSize: 11 },
+  supporter: { flexDirection: "row", alignItems: "center", minHeight: 54, borderRadius: 12, backgroundColor: "rgba(12,10,8,0.9)", borderWidth: 1, borderColor: "rgba(233,185,73,0.12)", paddingHorizontal: 12, marginBottom: 7 },
+  supporterPos: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: "#F1C95D", alignItems: "center", justifyContent: "center" },
+  supporterPosText: { color: "#F2CD70", fontWeight: "900" },
+  supporterName: { flex: 1, color: "#FFF", fontSize: 12, fontWeight: "700", marginLeft: 10 },
+  supporterCredits: { color: "#F2CD70", fontSize: 11, fontWeight: "800" },
+  notice: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 18, marginBottom: 4 },
+  noticeIcon: { color: "#BBAA9B", fontSize: 15 },
+  noticeText: { color: "#7F7773", fontSize: 9, flex: 1 },
+  errorState: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 26, paddingBottom: 90 },
+  errorStateIcon: { width: 70, height: 70, lineHeight: 70, borderRadius: 35, borderWidth: 1, borderColor: DP.colors.primary, color: DP.colors.primary, textAlign: "center", fontSize: 30, fontWeight: "800" },
+  errorStateTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 26, fontWeight: "700", textAlign: "center", marginTop: 20 },
+  errorStateText: { color: "#9C9591", fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 8 },
 });
