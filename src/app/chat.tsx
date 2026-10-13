@@ -891,329 +891,285 @@ export default function Chat() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#040205",
+        backgroundColor: "#020202",
     },
-
     loading: {
         flex: 1,
-        backgroundColor: "#040205",
+        backgroundColor: "#020202",
         justifyContent: "center",
         alignItems: "center",
     },
-
     title: {
-        color: "#fff",
-        fontSize: 28,
-        fontWeight: "900",
-        marginTop: 16,
-        marginHorizontal: 16,
+        color: "#FFFDFC",
+        fontFamily: "serif",
+        fontSize: 32,
+        fontWeight: "700",
+        marginTop: 18,
+        marginHorizontal: 18,
         marginBottom: 14,
     },
-
     search: {
-        height: 50,
+        height: 54,
         marginHorizontal: 16,
         marginBottom: 14,
         paddingHorizontal: 16,
         borderRadius: 16,
-        backgroundColor: "#12080A",
+        backgroundColor: "rgba(8,7,6,0.96)",
         color: "#fff",
         borderWidth: 1,
-        borderColor: "rgba(193,18,31,0.35)",
+        borderColor: "rgba(233,185,73,0.55)",
     },
-
     conversaCard: {
         flexDirection: "row",
         alignItems: "center",
         marginHorizontal: 16,
-        marginBottom: 12,
+        marginBottom: 10,
         padding: 12,
-        borderRadius: 20,
-        backgroundColor: "#12080A",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.06)",
-    },
-
-    avatar: {
-        width: 58,
-        height: 58,
         borderRadius: 18,
-        marginRight: 12,
+        backgroundColor: "rgba(8,7,6,0.96)",
+        borderWidth: 1,
+        borderColor: "rgba(233,185,73,0.22)",
     },
-
+    avatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        marginRight: 12,
+        borderWidth: 1,
+        borderColor: "#EAC667",
+    },
     avatarFallback: {
-        backgroundColor: "#251015",
+        backgroundColor: "#171108",
         justifyContent: "center",
         alignItems: "center",
     },
-
     avatarText: {
-        color: "#fff",
-        fontSize: 22,
-        fontWeight: "900",
+        color: "#F0CD73",
+        fontFamily: "serif",
+        fontSize: 23,
+        fontWeight: "800",
     },
-
-    conversaInfo: {
-        flex: 1,
-    },
-
+    conversaInfo: { flex: 1 },
     conversaTop: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
     },
-
     conversaNome: {
         color: "#fff",
+        fontFamily: "serif",
         fontSize: 17,
-        fontWeight: "800",
+        fontWeight: "700",
         flex: 1,
     },
-
-    lock: {
-        marginLeft: 8,
-    },
-
+    lock: { marginLeft: 8 },
     ultimaMensagem: {
-        color: "#aaa",
+        color: "#B7AEAA",
         marginTop: 4,
-    },
-
-    local: {
-        color: "#666",
-        marginTop: 3,
         fontSize: 12,
     },
-
+    local: {
+        color: "#756F6B",
+        marginTop: 3,
+        fontSize: 10,
+    },
     empty: {
         marginTop: 80,
         alignItems: "center",
     },
-
-    emptyText: {
-        color: "#888",
-    },
-
+    emptyText: { color: "#8F8986" },
     chatHeader: {
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 14,
-        paddingVertical: 12,
+        paddingVertical: 11,
         borderBottomWidth: 1,
-        borderBottomColor: "rgba(255,255,255,0.06)",
-        backgroundColor: "#070304",
+        borderBottomColor: "rgba(233,185,73,0.26)",
+        backgroundColor: "#030303",
     },
-
     backButton: {
-        width: 34,
-        height: 34,
+        width: 36,
+        height: 36,
         justifyContent: "center",
         alignItems: "center",
         marginRight: 8,
     },
-
     backText: {
-        color: "#fff",
-        fontSize: 28,
-        fontWeight: "800",
+        color: "#F1CD70",
+        fontSize: 30,
+        fontWeight: "300",
     },
-
     headerAvatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
+        width: 46,
+        height: 46,
+        borderRadius: 23,
         marginRight: 10,
+        borderWidth: 1,
+        borderColor: "#EBC65D",
     },
-
     headerName: {
         color: "#fff",
-        fontSize: 17,
-        fontWeight: "800",
+        fontFamily: "serif",
+        fontSize: 18,
+        fontWeight: "700",
     },
-
     headerStatus: {
-        color: "#888",
-        fontSize: 12,
+        color: "#8F8986",
+        fontSize: 10,
         marginTop: 2,
     },
-
     noMessages: {
-        color: "#777",
+        color: "#7C7570",
         marginTop: 20,
+        textAlign: "center",
     },
-
     bubble: {
         maxWidth: "78%",
-        padding: 12,
-        borderRadius: 16,
+        paddingHorizontal: 13,
+        paddingVertical: 11,
+        borderRadius: 17,
         marginBottom: 10,
+        borderWidth: 1,
     },
-
     bubbleMine: {
         alignSelf: "flex-end",
-        backgroundColor: "#C1121F",
-        borderBottomRightRadius: 4,
+        backgroundColor: "#8F0718",
+        borderColor: "rgba(255,49,80,0.7)",
+        borderBottomRightRadius: 5,
     },
-
     bubbleOther: {
         alignSelf: "flex-start",
-        backgroundColor: "#1B1114",
-        borderBottomLeftRadius: 4,
+        backgroundColor: "rgba(15,12,10,0.96)",
+        borderColor: "rgba(233,185,73,0.24)",
+        borderBottomLeftRadius: 5,
     },
-
-    bubbleText: {
-        fontSize: 15,
-        lineHeight: 20,
-    },
-
-    bubbleTextMine: {
-        color: "#fff",
-    },
-
-    bubbleTextOther: {
-        color: "#eee",
-    },
-
+    bubbleText: { fontSize: 14, lineHeight: 20 },
+    bubbleTextMine: { color: "#fff" },
+    bubbleTextOther: { color: "#F2ECE8" },
     paywall: {
         marginHorizontal: 16,
         marginBottom: 10,
-        padding: 16,
+        padding: 17,
         borderRadius: 20,
-        backgroundColor: "#101010",
+        backgroundColor: "rgba(12,8,6,0.98)",
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
+        borderColor: "rgba(233,185,73,0.58)",
+        shadowColor: "#E9B949",
+        shadowOpacity: 0.12,
+        shadowRadius: 10,
+        elevation: 4,
     },
-
     paywallTitle: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "900",
+        color: "#FFF",
+        fontFamily: "serif",
+        fontSize: 20,
+        fontWeight: "700",
         marginBottom: 8,
     },
-
     paywallText: {
-        color: "#ddd",
-        lineHeight: 21,
+        color: "#BDB4AF",
+        lineHeight: 20,
         marginBottom: 14,
+        fontSize: 12,
     },
-
     unlockButton: {
-        backgroundColor: "#C1121F",
+        backgroundColor: "#A9071C",
+        borderWidth: 1,
+        borderColor: "#F2CD70",
         padding: 14,
         borderRadius: 14,
         alignItems: "center",
     },
-
     unlockText: {
-        color: "#fff",
-        fontWeight: "900",
+        color: "#FFF",
+        fontFamily: "serif",
+        fontWeight: "700",
     },
-
     saldo: {
-        color: "#aaa",
+        color: "#A49B96",
         marginTop: 10,
         textAlign: "right",
+        fontSize: 11,
     },
-
     inputArea: {
         flexDirection: "row",
         alignItems: "center",
         padding: 10,
         borderTopWidth: 1,
-        borderTopColor: "rgba(255,255,255,0.06)",
-        backgroundColor: "#070304",
+        borderTopColor: "rgba(233,185,73,0.24)",
+        backgroundColor: "#030303",
     },
-
     iconButton: {
         width: 38,
         height: 38,
-        borderRadius: 12,
-        backgroundColor: "#140A0C",
+        borderRadius: 19,
+        backgroundColor: "#110D08",
+        borderWidth: 1,
+        borderColor: "rgba(233,185,73,0.34)",
         justifyContent: "center",
         alignItems: "center",
         marginRight: 6,
     },
-
-    iconText: {
-        fontSize: 18,
-    },
-
+    iconText: { fontSize: 17 },
     input: {
         flex: 1,
         height: 44,
         borderRadius: 14,
-        backgroundColor: "#12080A",
+        backgroundColor: "#0D0B09",
+        borderWidth: 1,
+        borderColor: "rgba(233,185,73,0.24)",
         color: "#fff",
         paddingHorizontal: 14,
         marginHorizontal: 6,
     },
-
     sendButton: {
-        backgroundColor: "#C1121F",
+        backgroundColor: "#A9071C",
+        borderWidth: 1,
+        borderColor: "#FF3150",
         height: 44,
         paddingHorizontal: 14,
         borderRadius: 14,
         justifyContent: "center",
         alignItems: "center",
     },
-
-    sendButtonDisabled: {
-        opacity: 0.5,
-    },
-
-    sendText: {
-        color: "#fff",
-        fontWeight: "900",
-    },
-
+    sendButtonDisabled: { opacity: 0.45 },
+    sendText: { color: "#fff", fontWeight: "900" },
     chatActions: {
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 10,
         paddingVertical: 8,
-        backgroundColor: "#090304",
+        backgroundColor: "#050403",
         borderBottomWidth: 1,
-        borderBottomColor:
-            "rgba(255,255,255,0.08)",
+        borderBottomColor: "rgba(233,185,73,0.18)",
     },
-
     actionButton: {
-        backgroundColor: "#2A070C",
+        backgroundColor: "#160D08",
         borderWidth: 1,
-        borderColor: "#5A0E18",
+        borderColor: "rgba(233,185,73,0.34)",
         borderRadius: 20,
         paddingHorizontal: 12,
         paddingVertical: 8,
         marginRight: 8,
     },
-
-    actionText: {
-        color: "#FFF",
-        fontSize: 12,
-        fontWeight: "700",
-    },
-
-    actionIcon: {
-        fontSize: 16,
-    },
+    actionText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+    actionIcon: { fontSize: 16 },
     headerActions: {
         flexDirection: "row",
         alignItems: "center",
         marginTop: 6,
         gap: 6,
     },
-
     headerActionButton: {
-        backgroundColor: "#2A070C",
+        backgroundColor: "#110C08",
         borderWidth: 1,
-        borderColor: "#5A0E18",
+        borderColor: "rgba(233,185,73,0.38)",
         borderRadius: 16,
         paddingHorizontal: 9,
         paddingVertical: 6,
     },
-
     headerActionText: {
-        color: "#fff",
+        color: "#F1CD70",
         fontSize: 13,
         fontWeight: "800",
     },
