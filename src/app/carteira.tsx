@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
+import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP, dpNumber } from "../constants/dp-theme";
 import { obterCarteira } from "../services/carteira";
 import { getRealtimeSocket } from "../services/liveSocket";
@@ -46,66 +47,79 @@ export default function Carteira() {
   }, [carregar]);
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={DP.colors.gold} /></View>;
+    return (
+      <LuxuryScreen>
+        <View style={styles.center}><ActivityIndicator size="large" color={DP.colors.gold} /></View>
+      </LuxuryScreen>
+    );
   }
 
   return (
-    <View style={styles.page}>
+    <LuxuryScreen>
+      <LuxuryHeader />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={DP.colors.gold} onRefresh={() => { setRefreshing(true); carregar(); }} />}
       >
-        <Text style={styles.brand}>DESEJO PROIBIDO</Text>
-        <Text style={styles.kicker}>CARTEIRA</Text>
+        <Eyebrow>CARTEIRA</Eyebrow>
         <Text style={styles.title}>Seu saldo</Text>
-        <Text style={styles.subtitle}>Gerencie seus créditos, minutos e benefícios.</Text>
+        <Text style={styles.subtitle}>Gerencie seus créditos, minutos e benefícios</Text>
 
         <View style={styles.balanceCard}>
-          <View style={styles.balanceHalo} />
+          <View style={styles.balanceGlow} />
           <Text style={styles.balanceLabel}>SALDO DISPONÍVEL</Text>
           <View style={styles.balanceRow}>
-            <View style={styles.coinMark}><Text style={styles.coinMarkText}>D+</Text></View>
+            <View style={styles.coinOuter}>
+              <View style={styles.coinInner}>
+                <Text style={styles.coinText}>D+</Text>
+              </View>
+            </View>
             <View>
               <Text style={styles.balanceValue}>{dpNumber(saldo)}</Text>
               <Text style={styles.balanceUnit}>créditos</Text>
             </View>
           </View>
-          <View style={styles.updatedRow}><View style={styles.updatedDot} /><Text style={styles.updatedText}>Atualizado agora</Text></View>
-          <Pressable style={styles.buyButton} onPress={() => router.push("/creditos")}>
+          <View style={styles.updatedRow}>
+            <View style={styles.updatedDot} />
+            <Text style={styles.updatedText}>Atualizado agora</Text>
+          </View>
+
+          <Pressable onPress={() => router.push("/creditos")} style={({ pressed }) => [styles.buyButton, pressed && styles.pressed]}>
             <Text style={styles.buyButtonText}>Comprar créditos</Text>
             <Text style={styles.buyButtonArrow}>›</Text>
           </Pressable>
         </View>
 
-        <View style={styles.minutesCard}>
-          <View style={styles.minutesIcon}><Text style={styles.minutesIconText}>◉</Text></View>
-          <View style={{ flex: 1 }}>
+        <View style={styles.minutesRow}>
+          <View style={styles.minutesOrb}>
+            <View style={styles.minutesDot} />
+          </View>
+          <View>
             <Text style={styles.minutesValue}>{dpNumber(minutos)}</Text>
             <Text style={styles.minutesLabel}>minutos de live</Text>
           </View>
-          <Text style={styles.minutesGhost}>♡</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>ACESSO RÁPIDO</Text>
+        <Eyebrow>ACESSO RÁPIDO</Eyebrow>
         <View style={styles.quickRow}>
-          <QuickCard icon="◉" title="Assistir lives" subtitle="Criadoras ao vivo" onPress={() => router.push("/lives")} />
-          <QuickCard icon="♕" title="Área da Criadora" subtitle="Ganhos e saques" onPress={() => router.push("/criadora")} />
+          <QuickCard icon="▶" title="Assistir lives" subtitle="Criadora ao vivo" onPress={() => router.push("/lives")} />
+          <QuickCard icon="♛" title="Área da Criadora" subtitle="Ganhos e saques" onPress={() => router.push("/criadora")} />
         </View>
 
-        <View style={styles.protectedRow}>
-          <Text style={styles.protectedIcon}>▣</Text>
-          <Text style={styles.protectedText}>Pagamentos e saldo protegidos</Text>
+        <View style={styles.securityRow}>
+          <Text style={styles.securityIcon}>◇</Text>
+          <Text style={styles.securityText}>Pagamentos e saldo protegidos</Text>
         </View>
       </ScrollView>
       <DPBottomNav />
-    </View>
+    </LuxuryScreen>
   );
 }
 
 function QuickCard({ icon, title, subtitle, onPress }: { icon: string; title: string; subtitle: string; onPress: () => void }) {
   return (
-    <Pressable style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.78 }]} onPress={onPress}>
+    <Pressable style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.quickIcon}><Text style={styles.quickIconText}>{icon}</Text></View>
       <Text style={styles.quickTitle}>{title}</Text>
       <Text style={styles.quickSubtitle}>{subtitle}</Text>
@@ -115,42 +129,126 @@ function QuickCard({ icon, title, subtitle, onPress }: { icon: string; title: st
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#000" },
-  content: { padding: 16, paddingTop: 18, paddingBottom: 104 },
-  center: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
-  brand: { color: DP.colors.gold, fontSize: 15, fontWeight: "900", letterSpacing: 1.1 },
-  kicker: { color: DP.colors.gold, fontSize: 10, fontWeight: "900", letterSpacing: 1.5, marginTop: 18 },
-  title: { color: "#fff", fontSize: 31, fontWeight: "900", letterSpacing: -0.8, marginTop: 4 },
-  subtitle: { color: DP.colors.muted, fontSize: 12, marginTop: 4, marginBottom: 16 },
-  balanceCard: { overflow: "hidden", borderRadius: 22, padding: 18, backgroundColor: "#110503", borderWidth: 1.2, borderColor: DP.colors.gold, ...DP.shadow.gold },
-  balanceHalo: { position: "absolute", width: 240, height: 240, borderRadius: 120, backgroundColor: "rgba(153,0,0,0.22)", right: -80, top: -80 },
-  balanceLabel: { color: DP.colors.gold, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
-  balanceRow: { flexDirection: "row", alignItems: "center", gap: 15, marginTop: 12 },
-  coinMark: { width: 70, height: 70, borderRadius: 35, backgroundColor: "#201506", borderWidth: 2, borderColor: DP.colors.gold, alignItems: "center", justifyContent: "center", ...DP.shadow.gold },
-  coinMarkText: { color: DP.colors.goldBright, fontSize: 23, fontWeight: "900" },
-  balanceValue: { color: DP.colors.goldBright, fontSize: 43, fontWeight: "900", lineHeight: 48, letterSpacing: -1.4 },
-  balanceUnit: { color: "#fff", fontSize: 19, fontWeight: "700", marginTop: -2 },
-  updatedRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 13, marginLeft: 4 },
-  updatedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DP.colors.success },
-  updatedText: { color: DP.colors.muted, fontSize: 10 },
-  buyButton: { height: 50, borderRadius: 12, backgroundColor: DP.colors.gold, flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 15 },
-  buyButtonText: { color: "#160E00", fontWeight: "900", fontSize: 14 },
-  buyButtonArrow: { position: "absolute", right: 16, color: "#160E00", fontSize: 28, fontWeight: "300" },
-  minutesCard: { minHeight: 78, borderRadius: 18, marginTop: 12, backgroundColor: "#0B0B0B", borderWidth: 1, borderColor: DP.colors.border, flexDirection: "row", alignItems: "center", padding: 14, overflow: "hidden" },
-  minutesIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: DP.colors.primarySoft, borderWidth: 1, borderColor: DP.colors.borderStrong, alignItems: "center", justifyContent: "center", marginRight: 12 },
-  minutesIconText: { color: DP.colors.primary, fontSize: 23 },
-  minutesValue: { color: "#fff", fontSize: 25, fontWeight: "900" },
-  minutesLabel: { color: DP.colors.textSoft, fontSize: 11, marginTop: 1 },
-  minutesGhost: { position: "absolute", right: 10, fontSize: 63, color: "rgba(229,29,50,0.12)" },
-  sectionLabel: { color: DP.colors.gold, fontSize: 10, fontWeight: "900", letterSpacing: 1.3, marginTop: 20, marginBottom: 10 },
-  quickRow: { flexDirection: "row", gap: 9 },
-  quickCard: { flex: 1, minHeight: 122, borderRadius: 17, borderWidth: 1, borderColor: DP.colors.border, backgroundColor: "#0A0A0A", padding: 13 },
-  quickIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#141414", borderWidth: 1, borderColor: DP.colors.borderGold, alignItems: "center", justifyContent: "center" },
-  quickIconText: { color: DP.colors.gold, fontSize: 21, fontWeight: "900" },
-  quickTitle: { color: "#fff", fontSize: 12, fontWeight: "900", marginTop: 9 },
-  quickSubtitle: { color: DP.colors.muted, fontSize: 9, marginTop: 2 },
-  quickArrow: { position: "absolute", right: 11, bottom: 7, color: DP.colors.primary, fontSize: 20 },
-  protectedRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 18 },
-  protectedIcon: { color: DP.colors.gold, fontSize: 14 },
-  protectedText: { color: DP.colors.dim, fontSize: 10 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  content: { paddingHorizontal: 20, paddingBottom: 112 },
+  title: {
+    color: "#FFFDFC",
+    fontFamily: DP_SERIF,
+    fontSize: 42,
+    lineHeight: 46,
+    fontWeight: "700",
+    marginTop: 16,
+    letterSpacing: -1.2,
+  },
+  subtitle: { color: "#8F8986", fontSize: 14, lineHeight: 20, marginTop: 5, marginBottom: 24 },
+  balanceCard: {
+    overflow: "hidden",
+    borderRadius: 26,
+    padding: 22,
+    backgroundColor: "#1A0304",
+    borderWidth: 1.3,
+    borderColor: "#F3C95E",
+    shadowColor: "#E51D32",
+    shadowOpacity: 0.38,
+    shadowRadius: 22,
+    elevation: 10,
+  },
+  balanceGlow: {
+    position: "absolute",
+    width: 330,
+    height: 260,
+    borderRadius: 170,
+    backgroundColor: "rgba(176,0,21,0.22)",
+    right: -120,
+    top: -90,
+  },
+  balanceLabel: { color: "#F1D78B", fontSize: 12, fontWeight: "800", letterSpacing: 3.2 },
+  balanceRow: { flexDirection: "row", alignItems: "center", gap: 20, marginTop: 20 },
+  coinOuter: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 2,
+    borderColor: "#F7D36B",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#120C05",
+    shadowColor: "#F3C95E",
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 7,
+  },
+  coinInner: {
+    width: 77,
+    height: 77,
+    borderRadius: 39,
+    borderWidth: 1,
+    borderColor: "#8F6417",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coinText: { color: "#F5D36D", fontFamily: DP_SERIF, fontSize: 32, fontWeight: "800" },
+  balanceValue: { color: "#FFD36F", fontFamily: DP_SERIF, fontSize: 56, lineHeight: 58, fontWeight: "800", letterSpacing: -1.8 },
+  balanceUnit: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 24, fontWeight: "700", marginTop: -2 },
+  updatedRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 18 },
+  updatedDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: "#2FE26E", shadowColor: "#2FE26E", shadowOpacity: 0.6, shadowRadius: 7 },
+  updatedText: { color: "#A7A09C", fontSize: 13 },
+  buyButton: {
+    height: 60,
+    borderRadius: 29,
+    marginTop: 22,
+    backgroundColor: "#A9071C",
+    borderWidth: 1.2,
+    borderColor: "#F5D36D",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#E51D32",
+    shadowOpacity: 0.42,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  buyButtonText: { color: "#FFFDFC", fontFamily: DP_SERIF, fontSize: 19, fontWeight: "800" },
+  buyButtonArrow: { position: "absolute", right: 20, color: "#F7D36B", fontSize: 30, fontWeight: "200" },
+  minutesRow: { minHeight: 116, flexDirection: "row", alignItems: "center", gap: 20, paddingHorizontal: 8, marginVertical: 18 },
+  minutesOrb: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 1,
+    borderColor: "rgba(229,29,50,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(80,0,10,0.14)",
+  },
+  minutesDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: DP.colors.primary, shadowColor: DP.colors.primary, shadowOpacity: 0.7, shadowRadius: 10 },
+  minutesValue: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 42, lineHeight: 44, fontWeight: "700" },
+  minutesLabel: { color: "#C8C0BA", fontSize: 13, marginTop: 2 },
+  quickRow: { flexDirection: "row", gap: 12, marginTop: 18 },
+  quickCard: {
+    flex: 1,
+    minHeight: 150,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(233,185,73,0.58)",
+    backgroundColor: "rgba(8,7,6,0.94)",
+    padding: 16,
+  },
+  quickIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#F1C95D",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#120D07",
+  },
+  quickIconText: { color: "#F2CD70", fontSize: 21, fontWeight: "800" },
+  quickTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 16, fontWeight: "700", marginTop: 14 },
+  quickSubtitle: { color: "#8F8986", fontSize: 11, marginTop: 3 },
+  quickArrow: { position: "absolute", right: 14, bottom: 15, color: "#F2CD70", fontSize: 27 },
+  securityRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 22 },
+  securityIcon: { color: "#F2CD70", fontSize: 14 },
+  securityText: { color: "#756F6C", fontSize: 10 },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
 });
