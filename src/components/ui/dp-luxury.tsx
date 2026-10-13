@@ -8,7 +8,7 @@ export const DP_SERIF = Platform.select({ ios: "Georgia", android: "serif", defa
 
 export function LuxuryBackground() {
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <View style={styles.black} />
       <View style={styles.redGlowTop} />
       <View style={styles.redGlowCenter} />
@@ -149,7 +149,7 @@ export function LuxuryCard({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#000", overflow: "hidden" },
-  black: { ...StyleSheet.absoluteFillObject, backgroundColor: "#020202" },
+  black: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "#020202" },
   redGlowTop: {
     position: "absolute",
     width: 360,
