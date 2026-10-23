@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -128,10 +129,23 @@ export default function Login() {
                   onPress={() => setMostrarSenha((value) => !value)}
                   hitSlop={12}
                   style={styles.eyeButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
                 >
-                  <EyeOffIcon open={mostrarSenha} />
+                  <Image
+                    source={require("../../assets/images/eye-off-reference.png")}
+                    style={styles.eyeReference}
+                    resizeMode="contain"
+                  />
                 </Pressable>
               </View>
+
+              <Pressable
+                onPress={() => router.push("/recuperar-senha")}
+                style={styles.forgotRow}
+              >
+                <Text style={styles.forgotText}>Esqueci minha senha</Text>
+              </Pressable>
 
               <View style={styles.ctaGlow} />
               <Pressable
@@ -194,17 +208,6 @@ function LockIcon() {
       <View style={styles.lockBody}>
         <View style={styles.lockDot} />
       </View>
-    </View>
-  );
-}
-
-function EyeOffIcon({ open }: { open: boolean }) {
-  return (
-    <View style={styles.eyeIconWrap}>
-      <View style={styles.eyeOval}>
-        <View style={styles.eyePupil} />
-      </View>
-      {!open ? <View style={styles.eyeSlash} /> : null}
     </View>
   );
 }
@@ -553,39 +556,28 @@ const styles = StyleSheet.create({
   },
 
   eyeButton: {
-    width: 38,
+    width: 34,
     height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyeReference: {
+    width: 22,
+    height: 22,
+    opacity: 0.96,
+  },
+  forgotRow: {
+    height: 29,
+    alignSelf: "flex-end",
     alignItems: "flex-end",
     justifyContent: "center",
+    paddingLeft: 12,
   },
-  eyeIconWrap: {
-    width: 25,
-    height: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  eyeOval: {
-    width: 22,
-    height: 12,
-    borderWidth: 1.2,
-    borderColor: "#B77E4E",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    transform: [{ rotate: "-3deg" }],
-  },
-  eyePupil: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#B77E4E",
-  },
-  eyeSlash: {
-    position: "absolute",
-    width: 27,
-    height: 1.3,
-    backgroundColor: "#B77E4E",
-    transform: [{ rotate: "38deg" }],
+  forgotText: {
+    color: "#C6A562",
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "600",
   },
 
   ctaGlow: {
@@ -604,7 +596,7 @@ const styles = StyleSheet.create({
   loginButton: {
     height: 72,
     borderRadius: 36,
-    marginTop: 47,
+    marginTop: 18,
     backgroundColor: "#9E061B",
     borderWidth: 1.1,
     borderColor: "#F4D16E",
