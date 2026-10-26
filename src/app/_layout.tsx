@@ -256,7 +256,7 @@ export default function Layout() {
 const styles = StyleSheet.create({
   drawerRoot: { flex: 1, backgroundColor: "#020202", overflow: "hidden" },
   drawerShade: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.52)",
   },
   drawerContent: { paddingHorizontal: 22 },
