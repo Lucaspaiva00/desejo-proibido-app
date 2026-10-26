@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   ImageBackground,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -64,11 +65,23 @@ export default function Feed() {
   const [meuPerfil, setMeuPerfil] = useState<any>(null);
   const [fotoCount, setFotoCount] = useState(1);
   const [modo, setModo] = useState("Descobrir");
+  const [generoFiltro, setGeneroFiltro] = useState<"FEMININO" | "MASCULINO" | "Qualquer">("FEMININO");
+  const [idadeMin, setIdadeMin] = useState(18);
+  const [idadeMax, setIdadeMax] = useState(45);
+  const [localFiltro, setLocalFiltro] = useState<"cidade" | "estado" | "qualquer">("cidade");
+  const [somenteComFoto, setSomenteComFoto] = useState(false);
+  const [somenteVerificados, setSomenteVerificados] = useState(false);
+  const [ordenarPor, setOrdenarPor] = useState<"recent" | "boost" | "random">("recent");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   useEffect(() => {
-    carregarResumo();
-    carregar();
+    inicializar();
   }, [previewAtivo]);
+
+  async function inicializar() {
+    const perfil = await carregarResumo();
+    await carregar(perfil);
+  }
 
   const usuario = usuarios[indice];
   const proximo1 = usuarios[indice + 1];
@@ -89,10 +102,11 @@ export default function Feed() {
 
   async function carregarResumo() {
     if (previewAtivo) {
+      const perfilPreview = { cidade: "Salvador", estado: "BA", genero: "MASCULINO" };
       setSaldo(250);
       setVip(true);
-      setMeuPerfil({ cidade: "Salvador", estado: "BA", genero: "MASCULINO" });
-      return;
+      setMeuPerfil(perfilPreview);
+      return perfilPreview;
     }
 
     try {
@@ -103,13 +117,33 @@ export default function Feed() {
       ]);
       setSaldo(Number(usuarioRes.data?.saldoCreditos || 0));
       setVip(!!(usuarioRes.data?.premiumAtivo || usuarioRes.data?.isPremium));
-      setMeuPerfil(perfilRes.data || null);
+      const perfil = perfilRes.data || null;
+      setMeuPerfil(perfil);
+      return perfil;
     } catch {
-      // O feed continua carregando mesmo sem o resumo do topo.
+      return null;
     }
   }
 
-  async function carregar() {
+  function montarFiltros(perfilBase: any = meuPerfil) {
+    return {
+      ordenarPor,
+      take: 50,
+      genero: generoFiltro === "Qualquer" ? "Qualquer" : generoFiltro,
+      idadeMin,
+      idadeMax,
+      somenteComFoto,
+      somenteVerificados,
+      ...(localFiltro === "cidade" && perfilBase?.cidade
+        ? { cidade: perfilBase.cidade, estado: perfilBase?.estado || "" }
+        : {}),
+      ...(localFiltro === "estado" && perfilBase?.estado
+        ? { estado: perfilBase.estado }
+        : {}),
+    };
+  }
+
+  async function carregar(perfilBase: any = meuPerfil, override: any = {}) {
     try {
       setLoading(true);
       if (previewAtivo) {
@@ -118,7 +152,7 @@ export default function Feed() {
         return;
       }
 
-      const dados = await buscarFeed({ ordenarPor: "recent", take: 50 });
+      const dados = await buscarFeed({ ...montarFiltros(perfilBase), ...override });
       setUsuarios(dados || []);
       setIndice(0);
     } catch (error) {
@@ -197,6 +231,99 @@ export default function Feed() {
     }
   }
 
+  async function aplicarFiltroRapido(tipo: "todos" | "perto" | "novos") {
+    if (tipo === "todos") {
+      setGeneroFiltro("Qualquer");
+      setIdadeMin(18);
+      setIdadeMax(99);
+      setLocalFiltro("qualquer");
+      setSomenteComFoto(false);
+      setSomenteVerificados(false);
+      setOrdenarPor("recent");
+      setModo("Descobrir");
+      await carregar(meuPerfil, {
+        genero: "Qualquer",
+        idadeMin: 18,
+        idadeMax: 99,
+        ordenarPor: "recent",
+        cidade: undefined,
+        estado: undefined,
+        somenteComFoto: false,
+        somenteVerificados: false,
+      });
+      return;
+    }
+
+    if (tipo === "perto") {
+      setLocalFiltro("cidade");
+      setModo("Perto de você");
+      await carregar(meuPerfil, {
+        cidade: meuPerfil?.cidade || "",
+        estado: meuPerfil?.estado || "",
+      });
+      return;
+    }
+
+    setOrdenarPor("recent");
+    setModo("Novos");
+    await carregar(meuPerfil, { ordenarPor: "recent" });
+  }
+
+  async function alternarGenero() {
+    const proximo = generoFiltro === "FEMININO"
+      ? "MASCULINO"
+      : generoFiltro === "MASCULINO"
+        ? "Qualquer"
+        : "FEMININO";
+    setGeneroFiltro(proximo);
+    await carregar(meuPerfil, { genero: proximo });
+  }
+
+  async function alternarIdade() {
+    const faixas = [
+      [18, 45],
+      [18, 25],
+      [26, 35],
+      [36, 45],
+      [46, 60],
+      [18, 99],
+    ] as const;
+    const atual = faixas.findIndex(([min, max]) => min === idadeMin && max === idadeMax);
+    const [min, max] = faixas[(atual + 1 + faixas.length) % faixas.length];
+    setIdadeMin(min);
+    setIdadeMax(max);
+    await carregar(meuPerfil, { idadeMin: min, idadeMax: max });
+  }
+
+  async function alternarLocal() {
+    const proximo = localFiltro === "cidade"
+      ? "estado"
+      : localFiltro === "estado"
+        ? "qualquer"
+        : "cidade";
+
+    setLocalFiltro(proximo);
+
+    if (proximo === "cidade") {
+      await carregar(meuPerfil, {
+        cidade: meuPerfil?.cidade || "",
+        estado: meuPerfil?.estado || "",
+      });
+    } else if (proximo === "estado") {
+      await carregar(meuPerfil, {
+        cidade: undefined,
+        estado: meuPerfil?.estado || "",
+      });
+    } else {
+      await carregar(meuPerfil, { cidade: undefined, estado: undefined });
+    }
+  }
+
+  async function aplicarMaisFiltros() {
+    setFiltrosAbertos(false);
+    await carregar();
+  }
+
   function abrirMaisAcoes() {
     if (previewAtivo) {
       Alert.alert("Mais ações", "Prévia visual do feed.");
@@ -271,16 +398,23 @@ export default function Feed() {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeRow}>
           {[
-            ["Descobrir", "●"],
+            ["Descobrir", "♦"],
             ["Online", "●"],
             ["Perto de você", "●"],
             ["Novos", "★"],
             ["Mais filtros", "☷"],
           ].map(([label, icon]) => {
             const active = modo === label;
+            const onPress = () => {
+              if (label === "Descobrir") aplicarFiltroRapido("todos");
+              else if (label === "Perto de você") aplicarFiltroRapido("perto");
+              else if (label === "Novos") aplicarFiltroRapido("novos");
+              else if (label === "Mais filtros") setFiltrosAbertos(true);
+              else Alert.alert("Online", "O backend ainda não registra presença/última atividade. Os demais filtros já estão funcionais.");
+            };
             return (
-              <Pressable key={label} onPress={() => setModo(label)} style={[styles.modeChip, active && styles.modeChipActive]}>
-                <Text style={[styles.modeIcon, label === "Online" && styles.onlineGreen]}>{label === "Descobrir" ? "♦" : icon}</Text>
+              <Pressable key={label} onPress={onPress} style={[styles.modeChip, active && styles.modeChipActive]}>
+                <Text style={[styles.modeIcon, label === "Online" && styles.onlineGreen]}>{icon}</Text>
                 <Text style={[styles.modeText, active && styles.modeTextActive]}>{label}</Text>
               </Pressable>
             );
@@ -288,10 +422,28 @@ export default function Feed() {
         </ScrollView>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <View style={styles.filterChip}><Text style={styles.filterIcon}>▽</Text><Text style={styles.filterText}>Todos</Text><Text style={styles.chevron}>⌄</Text></View>
-          <View style={styles.filterChip}><Text style={styles.filterIcon}>●</Text><Text style={styles.filterText}>{localLabel}</Text><Text style={styles.chevron}>⌄</Text></View>
-          <View style={[styles.filterChip, styles.genderChip]}><Text style={styles.genderIcon}>♀</Text><Text style={styles.filterText}>{generoDesejado}</Text><Text style={styles.chevron}>⌄</Text></View>
-          <View style={styles.filterChip}><Text style={styles.filterIcon}>♔</Text><Text style={styles.filterText}>18 - 45 anos</Text><Text style={styles.chevron}>⌄</Text></View>
+          <Pressable style={styles.filterChip} onPress={() => aplicarFiltroRapido("todos")}>
+            <Text style={styles.filterIcon}>▽</Text><Text style={styles.filterText}>Todos</Text>
+          </Pressable>
+          <Pressable style={styles.filterChip} onPress={alternarLocal}>
+            <Text style={styles.filterIcon}>●</Text>
+            <Text style={styles.filterText}>
+              {localFiltro === "cidade" ? localLabel : localFiltro === "estado" ? meuPerfil?.estado || "UF" : "Qualquer lugar"}
+            </Text>
+            <Text style={styles.chevron}>⌄</Text>
+          </Pressable>
+          <Pressable style={[styles.filterChip, styles.genderChip]} onPress={alternarGenero}>
+            <Text style={styles.genderIcon}>{generoFiltro === "MASCULINO" ? "♂" : generoFiltro === "FEMININO" ? "♀" : "⚥"}</Text>
+            <Text style={styles.filterText}>
+              {generoFiltro === "FEMININO" ? "Mulheres" : generoFiltro === "MASCULINO" ? "Homens" : "Qualquer"}
+            </Text>
+            <Text style={styles.chevron}>⌄</Text>
+          </Pressable>
+          <Pressable style={styles.filterChip} onPress={alternarIdade}>
+            <Text style={styles.filterIcon}>♔</Text>
+            <Text style={styles.filterText}>{idadeMin} - {idadeMax === 99 ? "99+" : idadeMax} anos</Text>
+            <Text style={styles.chevron}>⌄</Text>
+          </Pressable>
         </ScrollView>
       </View>
 
@@ -394,6 +546,57 @@ export default function Feed() {
           </ImageBackground>
         </View>
       )}
+
+      <Modal
+        visible={filtrosAbertos}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFiltrosAbertos(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setFiltrosAbertos(false)}>
+          <Pressable style={styles.filterSheet} onPress={() => {}}>
+            <Text style={styles.filterSheetEyebrow}>FILTROS</Text>
+            <Text style={styles.filterSheetTitle}>Refine suas conexões</Text>
+
+            <Pressable
+              style={[styles.filterToggle, somenteComFoto && styles.filterToggleActive]}
+              onPress={() => setSomenteComFoto((v) => !v)}
+            >
+              <Text style={styles.filterToggleText}>Somente perfis com foto</Text>
+              <Text style={styles.filterToggleValue}>{somenteComFoto ? "Ativo" : "Todos"}</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.filterToggle, somenteVerificados && styles.filterToggleActive]}
+              onPress={() => setSomenteVerificados((v) => !v)}
+            >
+              <Text style={styles.filterToggleText}>Somente verificados</Text>
+              <Text style={styles.filterToggleValue}>{somenteVerificados ? "Ativo" : "Todos"}</Text>
+            </Pressable>
+
+            <Text style={styles.filterGroupLabel}>ORDENAÇÃO</Text>
+            <View style={styles.orderRow}>
+              {[
+                ["recent", "Novos"],
+                ["boost", "Destaques"],
+                ["random", "Aleatório"],
+              ].map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  onPress={() => setOrdenarPor(value as "recent" | "boost" | "random")}
+                  style={[styles.orderChip, ordenarPor === value && styles.orderChipActive]}
+                >
+                  <Text style={[styles.orderChipText, ordenarPor === value && styles.orderChipTextActive]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable style={styles.applyFiltersButton} onPress={aplicarMaisFiltros}>
+              <Text style={styles.applyFiltersText}>Aplicar filtros</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <DPBottomNav />
     </LuxuryScreen>
@@ -615,6 +818,90 @@ const styles = StyleSheet.create({
   starGlyph: { color: "#F0B64A" },
   heartGlyph: { color: "#FF6A85" },
   boltGlyph: { color: "#DD4DF4" },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.78)",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  filterSheet: {
+    width: "100%",
+    backgroundColor: "#070707",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.30)",
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 34,
+  },
+  filterSheetEyebrow: {
+    color: "#DDB059",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 3,
+  },
+  filterSheetTitle: {
+    color: "#FFF",
+    fontSize: 25,
+    fontWeight: "800",
+    marginTop: 7,
+    marginBottom: 19,
+  },
+  filterToggle: {
+    minHeight: 58,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.22)",
+    backgroundColor: "#0C0C0C",
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  filterToggleActive: {
+    borderColor: "#DDB059",
+    backgroundColor: "rgba(119,5,18,0.42)",
+  },
+  filterToggleText: { color: "#F5F1EE", fontSize: 14, fontWeight: "600" },
+  filterToggleValue: { color: "#DDB059", fontSize: 12, fontWeight: "800" },
+  filterGroupLabel: {
+    color: "#8F8781",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+    marginTop: 12,
+    marginBottom: 10,
+  },
+  orderRow: { flexDirection: "row", gap: 8 },
+  orderChip: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderChipActive: {
+    backgroundColor: "#9D061B",
+    borderColor: "#F0C75D",
+  },
+  orderChipText: { color: "#C7C0BB", fontSize: 12, fontWeight: "600" },
+  orderChipTextActive: { color: "#FFF", fontWeight: "800" },
+  applyFiltersButton: {
+    height: 58,
+    borderRadius: 29,
+    marginTop: 24,
+    backgroundColor: "#9D061B",
+    borderWidth: 1,
+    borderColor: "#F0C75D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyFiltersText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
 
   emptyWrap: {
     flex: 1, alignItems: "center", justifyContent: "center",
