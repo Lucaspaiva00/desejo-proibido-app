@@ -4,18 +4,21 @@ import { Drawer } from "expo-router/drawer";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DP_SERIF, LockHeart } from "../components/ui/dp-luxury";
 import { api } from "../services/api";
-import { obterToken } from "../storage/auth";
+import { obterToken, removerToken } from "../storage/auth";
 import { useRealtimeNotifications } from "../hooks/use-realtime-notifications";
 
 const sections = [
@@ -88,6 +91,10 @@ function DrawerContent(props: any) {
   const [saldo, setSaldo] = useState(0);
   const [vip, setVip] = useState(false);
   const [foto, setFoto] = useState("");
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deleteSenha, setDeleteSenha] = useState("");
+  const [deleteConfirmacao, setDeleteConfirmacao] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     carregarResumo();
@@ -118,6 +125,68 @@ function DrawerContent(props: any) {
       setFoto(principal?.url || "");
     } catch {
       // Mantém o drawer funcional mesmo se o resumo não carregar.
+    }
+  }
+
+  async function sair() {
+    Alert.alert("Sair da conta", "Deseja realmente sair?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sair",
+        style: "destructive",
+        onPress: async () => {
+          await removerToken();
+          props.navigation.closeDrawer();
+          props.navigation.navigate("index");
+        },
+      },
+    ]);
+  }
+
+  async function excluirConta() {
+    if (!deleteSenha.trim()) {
+      Alert.alert("Senha obrigatória", "Digite sua senha atual.");
+      return;
+    }
+
+    if (deleteConfirmacao.trim().toUpperCase() !== "EXCLUIR") {
+      Alert.alert("Confirmação inválida", 'Digite "EXCLUIR" para confirmar.');
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      const headers = await authHeader();
+
+      await api.delete("/auth/me", {
+        headers,
+        data: {
+          senha: deleteSenha,
+          confirmacao: deleteConfirmacao,
+        },
+      });
+
+      await removerToken();
+      setDeleteModal(false);
+      setDeleteSenha("");
+      setDeleteConfirmacao("");
+
+      Alert.alert("Conta excluída", "Sua conta foi excluída definitivamente.", [
+        {
+          text: "OK",
+          onPress: () => {
+            props.navigation.closeDrawer();
+            props.navigation.navigate("index");
+          },
+        },
+      ]);
+    } catch (error: any) {
+      Alert.alert(
+        "Não foi possível excluir",
+        error?.response?.data?.erro || "Confira sua senha e tente novamente."
+      );
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -238,8 +307,126 @@ function DrawerContent(props: any) {
           </View>
         ))}
 
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>CONTA</Text>
+            <View style={styles.sectionLine} />
+          </View>
+
+          <Pressable
+            onPress={sair}
+            style={({ pressed }) => [styles.drawerItem, pressed && styles.pressed]}
+          >
+            <View style={styles.itemIconWrap}>
+              <SymbolView
+                name={{ ios: "rectangle.portrait.and.arrow.right", android: "logout", web: "logout" } as any}
+                size={26}
+                tintColor="#DDB059"
+                style={styles.itemSymbol}
+              />
+            </View>
+            <Text style={styles.itemLabel}>Sair</Text>
+            <SymbolView
+              name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" } as any}
+              size={22}
+              tintColor="#8F8B88"
+              style={styles.itemChevron}
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={() => setDeleteModal(true)}
+            style={({ pressed }) => [styles.drawerItem, styles.deleteItem, pressed && styles.pressed]}
+          >
+            <View style={[styles.itemIconWrap, styles.deleteIconWrap]}>
+              <SymbolView
+                name={{ ios: "trash.fill", android: "delete_forever", web: "delete_forever" } as any}
+                size={25}
+                tintColor="#FF5066"
+                style={styles.itemSymbol}
+              />
+            </View>
+            <Text style={[styles.itemLabel, styles.deleteLabel]}>Excluir conta</Text>
+            <SymbolView
+              name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" } as any}
+              size={22}
+              tintColor="#A85A62"
+              style={styles.itemChevron}
+            />
+          </Pressable>
+        </View>
+
         {vip ? <Text style={styles.hiddenVipState}>VIP ativo</Text> : null}
       </ScrollView>
+
+      <Modal
+        visible={deleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteModal(false)}
+      >
+        <View style={styles.deleteBackdrop}>
+          <View style={styles.deleteModalCard}>
+            <View style={styles.deleteModalIcon}>
+              <SymbolView
+                name={{ ios: "trash.fill", android: "delete_forever", web: "delete_forever" } as any}
+                size={28}
+                tintColor="#FF5066"
+                style={styles.itemSymbol}
+              />
+            </View>
+
+            <Text style={styles.deleteModalTitle}>Excluir conta</Text>
+            <Text style={styles.deleteModalText}>
+              Esta ação é permanente. Sua conta e seus dados serão removidos definitivamente.
+            </Text>
+
+            <Text style={styles.deleteFieldLabel}>Senha atual</Text>
+            <TextInput
+              value={deleteSenha}
+              onChangeText={setDeleteSenha}
+              secureTextEntry
+              placeholder="Digite sua senha"
+              placeholderTextColor="#6F6965"
+              style={styles.deleteInput}
+            />
+
+            <Text style={styles.deleteFieldLabel}>Digite EXCLUIR para confirmar</Text>
+            <TextInput
+              value={deleteConfirmacao}
+              onChangeText={setDeleteConfirmacao}
+              autoCapitalize="characters"
+              placeholder="EXCLUIR"
+              placeholderTextColor="#6F6965"
+              style={styles.deleteInput}
+            />
+
+            <View style={styles.deleteActions}>
+              <Pressable
+                disabled={deleteLoading}
+                onPress={() => {
+                  setDeleteModal(false);
+                  setDeleteSenha("");
+                  setDeleteConfirmacao("");
+                }}
+                style={styles.cancelDeleteButton}
+              >
+                <Text style={styles.cancelDeleteText}>Cancelar</Text>
+              </Pressable>
+
+              <Pressable
+                disabled={deleteLoading}
+                onPress={excluirConta}
+                style={[styles.confirmDeleteButton, deleteLoading && { opacity: 0.55 }]}
+              >
+                <Text style={styles.confirmDeleteText}>
+                  {deleteLoading ? "Excluindo..." : "Excluir definitivamente"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -596,6 +783,112 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.80,
     shadowRadius: 8,
     elevation: 8,
+  },
+
+  deleteItem: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,80,102,0.15)",
+    backgroundColor: "rgba(74,0,9,0.14)",
+  },
+  deleteIconWrap: {
+    backgroundColor: "rgba(255,80,102,0.06)",
+    borderColor: "rgba(255,80,102,0.18)",
+  },
+  deleteLabel: {
+    color: "#FF7A8B",
+  },
+
+  deleteBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 22,
+  },
+  deleteModalCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.34)",
+    backgroundColor: "#080808",
+    padding: 22,
+  },
+  deleteModalIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,80,102,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,80,102,0.22)",
+  },
+  deleteModalTitle: {
+    color: "#FFF",
+    fontFamily: DP_SERIF,
+    fontSize: 28,
+    fontWeight: "700",
+    marginTop: 16,
+  },
+  deleteModalText: {
+    color: "#AAA29D",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  deleteFieldLabel: {
+    color: "#E4C06B",
+    fontSize: 11,
+    fontWeight: "800",
+    marginBottom: 7,
+    marginTop: 8,
+  },
+  deleteInput: {
+    height: 52,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.28)",
+    backgroundColor: "#101010",
+    color: "#FFF",
+    paddingHorizontal: 14,
+    fontSize: 14,
+  },
+  deleteActions: {
+    marginTop: 22,
+    gap: 10,
+  },
+  cancelDeleteButton: {
+    height: 50,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.30)",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0C0C0C",
+  },
+  cancelDeleteText: {
+    color: "#E5DDD7",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  confirmDeleteButton: {
+    minHeight: 52,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#FF5066",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#8E0719",
+    paddingHorizontal: 12,
+  },
+  confirmDeleteText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
   },
 
   hiddenVipState: {
