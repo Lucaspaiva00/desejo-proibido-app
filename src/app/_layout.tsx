@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 
 import { Drawer } from "expo-router/drawer";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -21,25 +22,61 @@ const sections = [
   {
     title: "CONEXÕES",
     items: [
-      { route: "lives", label: "Live", icon: "◉" },
-      { route: "matches", label: "Matches", icon: "♡" },
-      { route: "conversas", label: "Conversas", icon: "◌" },
+      {
+        route: "lives",
+        label: "Live",
+        symbol: { ios: "dot.radiowaves.left.and.right", android: "sensors", web: "sensors" },
+      },
+      {
+        route: "matches",
+        label: "Matches",
+        symbol: { ios: "heart.fill", android: "favorite", web: "favorite" },
+      },
+      {
+        route: "conversas",
+        label: "Conversas",
+        symbol: { ios: "bubble.left.and.bubble.right.fill", android: "forum", web: "forum" },
+      },
     ],
   },
   {
     title: "MINHA CONTA",
     items: [
-      { route: "perfil", label: "Perfil", icon: "♙" },
-      { route: "fotos", label: "Fotos", icon: "▧" },
-      { route: "carteira", label: "Carteira", icon: "▱" },
-      { route: "creditos", label: "Comprar créditos", icon: "©+" },
+      {
+        route: "perfil",
+        label: "Perfil",
+        symbol: { ios: "person.crop.circle.fill", android: "account_circle", web: "account_circle" },
+      },
+      {
+        route: "fotos",
+        label: "Fotos",
+        symbol: { ios: "photo.on.rectangle.angled", android: "photo_library", web: "photo_library" },
+      },
+      {
+        route: "carteira",
+        label: "Carteira",
+        symbol: { ios: "wallet.bifold.fill", android: "account_balance_wallet", web: "account_balance_wallet" },
+      },
+      {
+        route: "creditos",
+        label: "Comprar créditos",
+        symbol: { ios: "creditcard.fill", android: "paid", web: "paid" },
+      },
     ],
   },
   {
     title: "CRIADORES E SEGURANÇA",
     items: [
-      { route: "criadora", label: "Área da Criadora", icon: "♕" },
-      { route: "bloqueados", label: "Bloqueados", icon: "⊘" },
+      {
+        route: "criadora",
+        label: "Área da Criadora",
+        symbol: { ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" },
+      },
+      {
+        route: "bloqueados",
+        label: "Bloqueados",
+        symbol: { ios: "person.crop.circle.badge.xmark", android: "person_off", web: "person_off" },
+      },
     ],
   },
 ] as const;
@@ -167,16 +204,18 @@ function DrawerContent(props: any) {
                     pressed && styles.pressed,
                   ]}
                 >
-                  <View style={styles.itemIconWrap}>
-                    <Text
-                      style={[
-                        styles.itemIcon,
-                        item.route === "creditos" && styles.itemIconCredit,
-                        active && styles.itemIconActive,
-                      ]}
-                    >
-                      {item.icon}
-                    </Text>
+                  <View
+                    style={[
+                      styles.itemIconWrap,
+                      active && styles.itemIconWrapActive,
+                    ]}
+                  >
+                    <SymbolView
+                      name={item.symbol as any}
+                      size={26}
+                      tintColor={active ? "#F2C76A" : "#DDB059"}
+                      style={styles.itemSymbol}
+                    />
                   </View>
 
                   <Text style={[styles.itemLabel, active && styles.itemLabelActive]}>
@@ -186,7 +225,12 @@ function DrawerContent(props: any) {
                   {active && item.route === "lives" ? (
                     <View style={styles.liveDot} />
                   ) : (
-                    <Text style={styles.itemArrow}>›</Text>
+                    <SymbolView
+                      name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" } as any}
+                      size={22}
+                      tintColor="#8F8B88"
+                      style={styles.itemChevron}
+                    />
                   )}
                 </Pressable>
               );
@@ -487,12 +531,12 @@ const styles = StyleSheet.create({
   },
 
   drawerItem: {
-    minHeight: 67,
-    borderRadius: 15,
+    minHeight: 66,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 13,
-    marginVertical: 2,
+    paddingHorizontal: 11,
+    marginVertical: 3,
   },
   drawerItemActive: {
     backgroundColor: "rgba(100,0,10,0.68)",
@@ -504,22 +548,27 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   itemIconWrap: {
-    width: 56,
-    alignItems: "flex-start",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    marginRight: 12,
+    alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(221,176,89,0.035)",
+    borderWidth: 1,
+    borderColor: "rgba(221,176,89,0.10)",
   },
-  itemIcon: {
-    color: "#DDAE4F",
-    fontSize: 32,
-    lineHeight: 36,
-    fontWeight: "300",
+  itemIconWrapActive: {
+    backgroundColor: "rgba(119,5,18,0.52)",
+    borderColor: "rgba(242,199,106,0.34)",
+    shadowColor: "#E3A83F",
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  itemIconCredit: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  itemIconActive: {
-    color: "#EDBC52",
+  itemSymbol: {
+    width: 28,
+    height: 28,
   },
   itemLabel: {
     flex: 1,
@@ -532,11 +581,10 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "500",
   },
-  itemArrow: {
-    color: "#8B8B8B",
-    fontSize: 35,
-    lineHeight: 37,
-    fontWeight: "200",
+  itemChevron: {
+    width: 22,
+    height: 22,
+    marginLeft: 8,
   },
   liveDot: {
     width: 11,
