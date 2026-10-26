@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useLocalSearchParams, useNavigation } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,9 +11,11 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, GoldButton, LockHeart, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
+import { LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
+import { api } from "../services/api";
 import {
   bloquearUsuario,
   buscarFeed,
@@ -19,23 +23,102 @@ import {
   denunciarUsuario,
   pularUsuario,
 } from "../services/feed";
+import { obterToken } from "../storage/auth";
 
-const categorias = ["Para conhecer", "Perto de você", "Mesmo objetivo", "Outra cidade", "Online"];
+const PREVIEW_USER = {
+  id: "__preview__",
+  fotoPrincipal: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=88",
+  perfil: {
+    nome: "Marina Costa",
+    cidade: "Salvador",
+    estado: "BA",
+    genero: "FEMININO",
+    nascimento: "1999-04-18T00:00:00.000Z",
+    bio: "Gosto de boas conversas, viagens, vinhos e aproveitar o lado bom da vida... ❤️",
+    verificado: true,
+  },
+};
+
+function idadeDe(nascimento?: string | Date | null) {
+  if (!nascimento) return null;
+  const data = new Date(nascimento);
+  if (Number.isNaN(data.getTime())) return null;
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - data.getFullYear();
+  const mes = hoje.getMonth() - data.getMonth();
+  if (mes < 0 || (mes === 0 && hoje.getDate() < data.getDate())) idade -= 1;
+  return idade;
+}
 
 export default function Feed() {
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const { preview } = useLocalSearchParams<{ preview?: string }>();
+  const previewAtivo = String(preview || "") === "1";
+
   const [loading, setLoading] = useState(true);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [indice, setIndice] = useState(0);
-  const [categoria, setCategoria] = useState("Para conhecer");
+  const [saldo, setSaldo] = useState(0);
+  const [vip, setVip] = useState(false);
+  const [meuPerfil, setMeuPerfil] = useState<any>(null);
+  const [fotoCount, setFotoCount] = useState(1);
+  const [modo, setModo] = useState("Descobrir");
 
   useEffect(() => {
+    carregarResumo();
     carregar();
-  }, []);
+  }, [previewAtivo]);
+
+  const usuario = usuarios[indice];
+  const proximo1 = usuarios[indice + 1];
+  const proximo2 = usuarios[indice + 2];
+
+  useEffect(() => {
+    if (!usuario || previewAtivo || usuario?.id === "__preview__") {
+      setFotoCount(1);
+      return;
+    }
+    carregarContagemFotos(usuario.id);
+  }, [usuario?.id, previewAtivo]);
+
+  async function authHeader() {
+    const token = await obterToken();
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  async function carregarResumo() {
+    if (previewAtivo) {
+      setSaldo(250);
+      setVip(true);
+      setMeuPerfil({ cidade: "Salvador", estado: "BA", genero: "MASCULINO" });
+      return;
+    }
+
+    try {
+      const headers = await authHeader();
+      const [usuarioRes, perfilRes] = await Promise.all([
+        api.get("/usuarios/me", { headers }),
+        api.get("/perfil/me", { headers }),
+      ]);
+      setSaldo(Number(usuarioRes.data?.saldoCreditos || 0));
+      setVip(!!(usuarioRes.data?.premiumAtivo || usuarioRes.data?.isPremium));
+      setMeuPerfil(perfilRes.data || null);
+    } catch {
+      // O feed continua carregando mesmo sem o resumo do topo.
+    }
+  }
 
   async function carregar() {
     try {
       setLoading(true);
-      const dados = await buscarFeed();
+      if (previewAtivo) {
+        setUsuarios([PREVIEW_USER, PREVIEW_USER, PREVIEW_USER]);
+        setIndice(0);
+        return;
+      }
+
+      const dados = await buscarFeed({ ordenarPor: "recent", take: 50 });
       setUsuarios(dados || []);
       setIndice(0);
     } catch (error) {
@@ -46,7 +129,15 @@ export default function Feed() {
     }
   }
 
-  const usuario = usuarios[indice];
+  async function carregarContagemFotos(id: string) {
+    try {
+      const headers = await authHeader();
+      const { data } = await api.get(`/perfil/publico/${id}`, { headers });
+      setFotoCount(Array.isArray(data?.fotos) ? Math.max(1, data.fotos.length) : 1);
+    } catch {
+      setFotoCount(1);
+    }
+  }
 
   function proximo() {
     setIndice((old) => old + 1);
@@ -54,6 +145,10 @@ export default function Feed() {
 
   async function curtir() {
     if (!usuario) return;
+    if (previewAtivo) {
+      proximo();
+      return;
+    }
     try {
       const r = await curtirUsuario(usuario.id);
       if (r?.matchCriado) Alert.alert("Match!", "Vocês curtiram um ao outro.");
@@ -65,6 +160,10 @@ export default function Feed() {
 
   async function pular() {
     if (!usuario) return;
+    if (previewAtivo) {
+      proximo();
+      return;
+    }
     try {
       await pularUsuario(usuario.id);
       proximo();
@@ -73,50 +172,61 @@ export default function Feed() {
     }
   }
 
+  function voltarPerfil() {
+    setIndice((old) => Math.max(0, old - 1));
+  }
+
   async function bloquear() {
-    if (!usuario) return;
-    Alert.alert("Bloquear perfil", "Deseja bloquear este perfil?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Bloquear",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await bloquearUsuario(usuario.id);
-            proximo();
-          } catch (error: any) {
-            Alert.alert("Erro", error?.response?.data?.erro || "Erro ao bloquear.");
-          }
-        },
-      },
-    ]);
+    if (!usuario || previewAtivo) return;
+    try {
+      await bloquearUsuario(usuario.id);
+      proximo();
+    } catch (error: any) {
+      Alert.alert("Erro", error?.response?.data?.erro || "Erro ao bloquear.");
+    }
   }
 
   async function denunciar() {
-    if (!usuario) return;
-    Alert.alert("Denunciar perfil", "Deseja denunciar este perfil?", [
+    if (!usuario || previewAtivo) return;
+    try {
+      await denunciarUsuario(usuario.id);
+      Alert.alert("Denúncia enviada", "Obrigado pelo aviso.");
+      proximo();
+    } catch (error: any) {
+      Alert.alert("Erro", error?.response?.data?.erro || "Erro ao denunciar.");
+    }
+  }
+
+  function abrirMaisAcoes() {
+    if (previewAtivo) {
+      Alert.alert("Mais ações", "Prévia visual do feed.");
+      return;
+    }
+
+    Alert.alert("Mais ações", "Escolha uma opção para este perfil.", [
       { text: "Cancelar", style: "cancel" },
-      {
-        text: "Denunciar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await denunciarUsuario(usuario.id);
-            Alert.alert("Denúncia enviada", "Obrigado pelo aviso.");
-            proximo();
-          } catch (error: any) {
-            Alert.alert("Erro", error?.response?.data?.erro || "Erro ao denunciar.");
-          }
-        },
-      },
+      { text: "Denunciar", onPress: denunciar },
+      { text: "Bloquear", style: "destructive", onPress: bloquear },
     ]);
   }
+
+  const generoDesejado = useMemo(() => {
+    const genero = String(meuPerfil?.genero || "").toUpperCase();
+    if (genero.includes("MASC")) return "Mulheres";
+    if (genero.includes("FEM")) return "Homens";
+    return "Mulheres";
+  }, [meuPerfil?.genero]);
+
+  const localLabel = meuPerfil?.cidade && meuPerfil?.estado
+    ? `${meuPerfil.cidade}, ${meuPerfil.estado}`
+    : "Salvador, BA";
 
   if (loading) {
     return (
       <LuxuryScreen>
+        <StatusBar style="light" />
         <View style={styles.loading}>
-          <LockHeart size={76} />
+          <LockHeart size={80} />
           <ActivityIndicator size="small" color={DP.colors.gold} />
           <Text style={styles.loadingText}>Encontrando conexões para você...</Text>
         </View>
@@ -124,125 +234,156 @@ export default function Feed() {
     );
   }
 
-  if (!usuario) {
-    return (
-      <LuxuryScreen>
-        <LuxuryHeader
-          action={
-            <Pressable onPress={carregar} style={styles.refreshSmall}>
-              <Text style={styles.refreshSmallText}>↻</Text>
-            </Pressable>
-          }
-        />
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyGlow} />
-          <View style={styles.emptyLines}>
-            <View style={styles.emptyLine} />
-            <View style={styles.lockCircle}><LockHeart size={94} /></View>
-            <View style={styles.emptyLine} />
-          </View>
-          <Text style={styles.emptyTitle}>Você já viu todos os perfis</Text>
-          <Text style={styles.emptyText}>Atualize para descobrir novas conexões disponíveis.</Text>
-          <View style={styles.emptyButton}>
-            <GoldButton title="Buscar novamente" onPress={carregar} red />
+  return (
+    <LuxuryScreen style={styles.screen}>
+      <StatusBar style="light" />
+
+      <View style={[styles.topArea, { paddingTop: Math.max(insets.top, 8) }]}>
+        <View style={styles.brandRow}>
+          <Pressable style={styles.vipPill} onPress={() => navigation.openDrawer?.()}>
+            <Text style={styles.vipCrown}>♕</Text>
+            <Text style={styles.vipPillText}>{vip ? "VIP" : "VIP"}</Text>
+          </Pressable>
+
+          <Pressable style={styles.brand} onPress={() => navigation.openDrawer?.()}>
+            <LockHeart size={50} />
+            <View style={styles.brandTextWrap}>
+              <View style={styles.brandTitleRow}>
+                <Text style={styles.brandGold}>DESEJO</Text>
+                <Text style={styles.brandRed}> PROIBIDO</Text>
+              </View>
+              <Text style={styles.brandTagline}>CONEXÕES QUE VÃO ALÉM</Text>
+            </View>
+          </Pressable>
+
+          <View style={styles.topActions}>
+            <View style={styles.bellWrap}>
+              <Text style={styles.bell}>♧</Text>
+              <View style={styles.bellBadge}><Text style={styles.bellBadgeText}>3</Text></View>
+            </View>
+            <View style={styles.creditPill}>
+              <Text style={styles.coin}>◉</Text>
+              <Text style={styles.creditValue}>{saldo.toLocaleString("pt-BR")}</Text>
+              <View style={styles.plus}><Text style={styles.plusText}>+</Text></View>
+            </View>
           </View>
         </View>
-        <DPBottomNav />
-      </LuxuryScreen>
-    );
-  }
 
-  const nome = usuario?.perfil?.nome || "Perfil";
-  const idade = usuario?.perfil?.idade || usuario?.idade || null;
-  const cidade = usuario?.perfil?.cidade || "";
-  const estado = usuario?.perfil?.estado || "";
-  const bio = usuario?.perfil?.bio || "";
-  const inicial = nome.charAt(0).toUpperCase();
-
-  return (
-    <LuxuryScreen>
-      <LuxuryHeader
-        action={
-          <Pressable onPress={carregar} style={styles.refreshSmall}>
-            <Text style={styles.refreshSmallText}>↻</Text>
-          </Pressable>
-        }
-      />
-
-      <ScrollView
-        horizontal
-        style={styles.categoriesScroll}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categories}
-      >
-        {categorias.map((item) => {
-          const active = categoria === item;
-          return (
-            <Pressable key={item} onPress={() => setCategoria(item)} style={styles.categoryItem}>
-              <View style={[styles.categoryIcon, active && styles.categoryIconActive]}>
-                <Text style={[styles.categoryGlyph, active && styles.categoryGlyphActive]}>
-                  {item === "Para conhecer" ? "♡" : item === "Perto de você" ? "⌖" : item === "Mesmo objetivo" ? "◎" : item === "Outra cidade" ? "◉" : "●"}
-                </Text>
-              </View>
-              <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>{item}</Text>
-              {active ? <View style={styles.categoryLine} /> : null}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <View style={styles.stage}>
-        {usuario.fotoPrincipal ? (
-          <ImageBackground source={{ uri: usuario.fotoPrincipal }} resizeMode="cover" style={styles.photo}>
-            <View style={styles.photoShadeTop} />
-            <View style={styles.photoShadeBottom} />
-
-            {usuario.boostAte ? (
-              <View style={styles.boostBadge}>
-                <Text style={styles.boostBadgeText}>DESTAQUE</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.profilePanel}>
-              <View style={styles.onlineRow}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.onlineText}>Online hoje</Text>
-              </View>
-              <Text style={styles.name}>{nome}{idade ? `, ${idade}` : ""}</Text>
-              {!!(cidade || estado) && (
-                <Text style={styles.location}>{cidade}{estado ? ` • ${estado}` : ""}</Text>
-              )}
-              {!!bio && <Text numberOfLines={2} style={styles.bio}>{bio}</Text>}
-            </View>
-
-            <View style={styles.actionsRail}>
-              <Pressable style={[styles.actionButton, styles.likeButton]} onPress={curtir}>
-                <Text style={styles.likeGlyph}>♥</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeRow}>
+          {[
+            ["Descobrir", "●"],
+            ["Online", "●"],
+            ["Perto de você", "●"],
+            ["Novos", "★"],
+            ["Mais filtros", "☷"],
+          ].map(([label, icon]) => {
+            const active = modo === label;
+            return (
+              <Pressable key={label} onPress={() => setModo(label)} style={[styles.modeChip, active && styles.modeChipActive]}>
+                <Text style={[styles.modeIcon, label === "Online" && styles.onlineGreen]}>{label === "Descobrir" ? "♦" : icon}</Text>
+                <Text style={[styles.modeText, active && styles.modeTextActive]}>{label}</Text>
               </Pressable>
-              <Pressable style={[styles.actionButton, styles.goldButton]} onPress={denunciar}>
-                <Text style={styles.goldGlyph}>✦</Text>
-              </Pressable>
-              <Pressable style={[styles.actionButton, styles.darkButton]} onPress={pular}>
-                <Text style={styles.skipGlyph}>×</Text>
-              </Pressable>
-            </View>
+            );
+          })}
+        </ScrollView>
 
-            <Pressable onLongPress={bloquear} style={styles.longPressHint}>
-              <Text style={styles.longPressText}>Segure para bloquear</Text>
-            </Pressable>
-          </ImageBackground>
-        ) : (
-          <View style={styles.noPhoto}>
-            <View style={styles.noPhotoCircle}><Text style={styles.noPhotoInitial}>{inicial}</Text></View>
-            <Text style={styles.noPhotoTitle}>{nome}</Text>
-            <Text style={styles.noPhotoText}>Este perfil ainda não adicionou uma foto principal.</Text>
-            <View style={styles.actionsNoPhoto}>
-              <Pressable style={[styles.actionButton, styles.darkButton]} onPress={pular}><Text style={styles.skipGlyph}>×</Text></Pressable>
-              <Pressable style={[styles.actionButton, styles.likeButton]} onPress={curtir}><Text style={styles.likeGlyph}>♥</Text></Pressable>
-            </View>
-          </View>
-        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <View style={styles.filterChip}><Text style={styles.filterIcon}>▽</Text><Text style={styles.filterText}>Todos</Text><Text style={styles.chevron}>⌄</Text></View>
+          <View style={styles.filterChip}><Text style={styles.filterIcon}>●</Text><Text style={styles.filterText}>{localLabel}</Text><Text style={styles.chevron}>⌄</Text></View>
+          <View style={[styles.filterChip, styles.genderChip]}><Text style={styles.genderIcon}>♀</Text><Text style={styles.filterText}>{generoDesejado}</Text><Text style={styles.chevron}>⌄</Text></View>
+          <View style={styles.filterChip}><Text style={styles.filterIcon}>♔</Text><Text style={styles.filterText}>18 - 45 anos</Text><Text style={styles.chevron}>⌄</Text></View>
+        </ScrollView>
       </View>
+
+      {!usuario ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyGlow} />
+          <View style={styles.emptyLock}><LockHeart size={102} /></View>
+          <Text style={styles.emptyTitle}>Você já viu todos os perfis</Text>
+          <Text style={styles.emptyText}>Atualize para descobrir novas conexões disponíveis.</Text>
+          <Pressable style={styles.emptyButton} onPress={carregar}>
+            <Text style={styles.emptyButtonText}>Buscar novamente</Text>
+            <Text style={styles.emptyArrow}>›</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.deckStage}>
+          {proximo2?.fotoPrincipal ? (
+            <ImageBackground source={{ uri: proximo2.fotoPrincipal }} style={[styles.backCard, styles.backCard2]} imageStyle={styles.cardImageRadius}>
+              <View style={styles.backCount}><Text style={styles.backCountText}>▧ 6</Text></View>
+            </ImageBackground>
+          ) : null}
+          {proximo1?.fotoPrincipal ? (
+            <ImageBackground source={{ uri: proximo1.fotoPrincipal }} style={[styles.backCard, styles.backCard1]} imageStyle={styles.cardImageRadius}>
+              <View style={styles.backCount}><Text style={styles.backCountText}>▧ 8</Text></View>
+            </ImageBackground>
+          ) : null}
+
+          <ImageBackground
+            source={{ uri: usuario.fotoPrincipal || PREVIEW_USER.fotoPrincipal }}
+            style={styles.frontCard}
+            imageStyle={styles.cardImageRadius}
+            resizeMode="cover"
+          >
+            <View style={styles.cardTopShade} />
+            <View style={styles.cardBottomShade} />
+
+            <View style={styles.onlineBadge}>
+              <View style={styles.greenDot} />
+              <Text style={styles.onlineBadgeText}>Online</Text>
+            </View>
+
+            <View style={styles.cardMenuArea}>
+              <View style={styles.photoCount}><Text style={styles.photoCountText}>▧ {previewAtivo ? 12 : fotoCount}</Text></View>
+              <Pressable onPress={abrirMaisAcoes} style={styles.moreButton}>
+                <Text style={styles.moreText}>⋮</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.profileInfo}>
+              <View style={styles.nameRow}>
+                <Text numberOfLines={1} style={styles.name}>
+                  {usuario?.perfil?.nome || "Perfil"}{idadeDe(usuario?.perfil?.nascimento) ? `, ${idadeDe(usuario?.perfil?.nascimento)}` : ""}
+                </Text>
+                {usuario?.perfil?.verificado || previewAtivo ? <View style={styles.verified}><Text style={styles.verifiedText}>✓</Text></View> : null}
+              </View>
+
+              <Text style={styles.location}>
+                ● {usuario?.perfil?.cidade || "Salvador"}, {usuario?.perfil?.estado || "BA"}
+                {usuario?.perfil?.cidade && meuPerfil?.cidade && usuario.perfil.cidade === meuPerfil.cidade ? " • 2 km de você" : ""}
+              </Text>
+
+              <Text numberOfLines={2} style={styles.bio}>
+                {usuario?.perfil?.bio || "Gosto de boas conversas, viagens, vinhos e aproveitar o lado bom da vida... ❤️"}
+              </Text>
+
+              <View style={styles.tags}>
+                {["Viagens", "Vinho", "Música", "Fitness", "+3"].map((tag) => (
+                  <View key={tag} style={styles.tag}><Text style={styles.tagText}>{tag}</Text></View>
+                ))}
+              </View>
+
+              <View style={styles.actions}>
+                <Pressable style={[styles.actionCircle, styles.rewindCircle]} onPress={voltarPerfil}>
+                  <Text style={[styles.actionGlyph, styles.rewindGlyph]}>↶</Text>
+                </Pressable>
+                <Pressable style={[styles.actionCircle, styles.nopeCircle]} onPress={pular}>
+                  <Text style={[styles.actionGlyph, styles.nopeGlyph]}>×</Text>
+                </Pressable>
+                <Pressable style={[styles.actionCircle, styles.starCircle]} onPress={curtir}>
+                  <Text style={[styles.actionGlyph, styles.starGlyph]}>★</Text>
+                </Pressable>
+                <Pressable style={[styles.actionCircle, styles.heartCircle]} onPress={curtir}>
+                  <Text style={[styles.actionGlyph, styles.heartGlyph]}>♥</Text>
+                </Pressable>
+                <Pressable style={[styles.actionCircle, styles.boltCircle]} onPress={curtir}>
+                  <Text style={[styles.actionGlyph, styles.boltGlyph]}>ϟ</Text>
+                </Pressable>
+              </View>
+            </View>
+          </ImageBackground>
+        </View>
+      )}
 
       <DPBottomNav />
     </LuxuryScreen>
@@ -250,103 +391,214 @@ export default function Feed() {
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: "#000" },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14 },
   loadingText: { color: "#9C9591", fontSize: 12 },
-  refreshSmall: {
-    width: 37,
-    height: 37,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: "rgba(233,185,73,0.58)",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(7,7,7,0.78)",
+
+  topArea: {
+    zIndex: 20,
+    backgroundColor: "rgba(0,0,0,0.98)",
+    paddingBottom: 8,
   },
-  refreshSmallText: { color: "#F2CD70", fontSize: 19 },
-  categoriesScroll: { flexGrow: 0, height: 90, backgroundColor: "rgba(0,0,0,0.9)" },
-  categories: { paddingHorizontal: 8, height: 90, alignItems: "stretch" },
-  categoryItem: { width: 90, alignItems: "center", justifyContent: "center", position: "relative", paddingTop: 5 },
-  categoryIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#0F0F0F",
-    borderWidth: 1,
-    borderColor: "rgba(233,185,73,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryIconActive: { backgroundColor: "rgba(110,0,14,0.24)", borderColor: DP.colors.primary },
-  categoryGlyph: { color: "#E9C96F", fontSize: 20, fontWeight: "700" },
-  categoryGlyphActive: { color: DP.colors.primary },
-  categoryLabel: { color: "#777", fontSize: 9, marginTop: 6, fontWeight: "700", textAlign: "center" },
-  categoryLabelActive: { color: "#F4F0ED" },
-  categoryLine: { position: "absolute", bottom: 0, width: 48, height: 2, borderRadius: 2, backgroundColor: "#E9B949" },
-  stage: { flex: 1, paddingBottom: 82, backgroundColor: "#000" },
-  photo: { flex: 1, width: "100%", backgroundColor: "#111", overflow: "hidden" },
-  photoShadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 130, backgroundColor: "rgba(0,0,0,0.18)" },
-  photoShadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 280, backgroundColor: "rgba(0,0,0,0.64)" },
-  boostBadge: {
-    position: "absolute",
-    top: 18,
-    left: 18,
-    borderRadius: 999,
-    backgroundColor: "rgba(145,0,19,0.94)",
+  brandRow: {
+    minHeight: 72,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  vipPill: {
+    height: 44,
+    minWidth: 74,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "#F2C95F",
-  },
-  boostBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
-  profilePanel: { position: "absolute", left: 20, right: 92, bottom: 32 },
-  onlineRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 5 },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F2CD70" },
-  onlineText: { color: "#F2CD70", fontSize: 12, fontWeight: "800" },
-  name: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 34, lineHeight: 37, fontWeight: "700", textShadowColor: "#000", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
-  location: { color: "#EFE7E0", fontSize: 12, marginTop: 5, fontWeight: "700" },
-  bio: { color: "rgba(255,255,255,0.9)", fontSize: 14, lineHeight: 20, marginTop: 8, fontWeight: "500" },
-  actionsRail: { position: "absolute", right: 18, bottom: 26, gap: 12 },
-  actionButton: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", borderWidth: 1.2 },
-  likeButton: { backgroundColor: DP.colors.primary, borderColor: "#FF3653", shadowColor: DP.colors.primary, shadowOpacity: 0.45, shadowRadius: 10, elevation: 8 },
-  goldButton: { backgroundColor: "#F6F1E7", borderColor: "#F2CD70" },
-  darkButton: { backgroundColor: "rgba(7,7,7,0.9)", borderColor: "rgba(255,255,255,0.18)" },
-  likeGlyph: { color: "#FFF", fontSize: 29 },
-  goldGlyph: { color: "#9C6F16", fontSize: 27 },
-  skipGlyph: { color: "#FFF", fontSize: 36, lineHeight: 38, fontWeight: "200" },
-  longPressHint: { position: "absolute", top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 5 },
-  longPressText: { color: "rgba(255,255,255,0.48)", fontSize: 9 },
-  noPhoto: { flex: 1, backgroundColor: "rgba(9,8,7,0.94)", borderWidth: 1, borderColor: "rgba(233,185,73,0.48)", alignItems: "center", justifyContent: "center", padding: 30 },
-  noPhotoCircle: { width: 98, height: 98, borderRadius: 49, borderWidth: 2, borderColor: "#F2CD70", alignItems: "center", justifyContent: "center", backgroundColor: "#171108" },
-  noPhotoInitial: { color: "#F2CD70", fontFamily: DP_SERIF, fontSize: 42, fontWeight: "800" },
-  noPhotoTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 28, fontWeight: "700", marginTop: 18 },
-  noPhotoText: { color: "#8F8986", textAlign: "center", marginTop: 7, lineHeight: 19 },
-  actionsNoPhoto: { flexDirection: "row", gap: 18, marginTop: 26 },
-  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26, paddingBottom: 105 },
-  emptyGlow: {
-    position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: "rgba(145,0,18,0.18)",
-    top: "15%",
-  },
-  emptyLines: { flexDirection: "row", alignItems: "center", gap: 18 },
-  emptyLine: { width: 74, height: 1, backgroundColor: "rgba(233,185,73,0.65)" },
-  lockCircle: {
-    width: 126,
-    height: 126,
-    borderRadius: 63,
-    borderWidth: 2,
-    borderColor: "#F0C75C",
+    borderColor: "#A86C23",
+    backgroundColor: "#080604",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(20,7,7,0.85)",
-    shadowColor: DP.colors.primary,
-    shadowOpacity: 0.35,
-    shadowRadius: 22,
-    elevation: 8,
+    paddingHorizontal: 10,
+    gap: 6,
   },
-  emptyTitle: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 32, lineHeight: 37, fontWeight: "700", textAlign: "center", marginTop: 40 },
-  emptyText: { color: "#9C9591", fontSize: 14, textAlign: "center", lineHeight: 21, marginTop: 10 },
-  emptyButton: { width: "100%", marginTop: 34 },
+  vipCrown: { color: "#E9B949", fontSize: 19 },
+  vipPillText: { color: "#E9B949", fontSize: 15, fontWeight: "700" },
+  brand: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  brandTextWrap: { marginLeft: 4, alignItems: "center" },
+  brandTitleRow: { flexDirection: "row", alignItems: "baseline" },
+  brandGold: { color: "#E9B949", fontFamily: "serif", fontSize: 18, fontWeight: "700" },
+  brandRed: { color: "#E51D32", fontFamily: "serif", fontSize: 18, fontWeight: "700" },
+  brandTagline: { color: "#D6B35A", fontSize: 6.5, fontWeight: "800", letterSpacing: 1.8, marginTop: 1 },
+  topActions: { flexDirection: "row", alignItems: "center", gap: 6 },
+  bellWrap: { width: 33, height: 42, alignItems: "center", justifyContent: "center" },
+  bell: { color: "#F7F4F1", fontSize: 26, transform: [{ rotate: "180deg" }] },
+  bellBadge: {
+    position: "absolute", top: 1, right: -1, width: 19, height: 19, borderRadius: 10,
+    backgroundColor: "#E51D32", alignItems: "center", justifyContent: "center",
+  },
+  bellBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "900" },
+  creditPill: {
+    height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#A86C23",
+    backgroundColor: "#080604", flexDirection: "row", alignItems: "center",
+    paddingLeft: 10, paddingRight: 3, gap: 7,
+  },
+  coin: { color: "#E9B949", fontSize: 18 },
+  creditValue: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  plus: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: "#C9252C",
+    borderWidth: 1, borderColor: "#E3B65C", alignItems: "center", justifyContent: "center",
+  },
+  plusText: { color: "#FFF", fontSize: 26, lineHeight: 28, fontWeight: "400" },
+
+  modeRow: { paddingHorizontal: 12, gap: 7, paddingVertical: 4 },
+  modeChip: {
+    height: 46, borderRadius: 23, borderWidth: 1, borderColor: "#8E5C24",
+    backgroundColor: "#050505", flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 8, paddingHorizontal: 15,
+  },
+  modeChipActive: {
+    backgroundColor: "#A40B20", borderColor: "#FF5B66",
+    shadowColor: "#E51D32", shadowOpacity: 0.55, shadowRadius: 10, elevation: 7,
+  },
+  modeIcon: { color: "#E9B949", fontSize: 17 },
+  onlineGreen: { color: "#18E646" },
+  modeText: { color: "#EFEDEB", fontSize: 13, fontWeight: "500" },
+  modeTextActive: { color: "#FFF", fontWeight: "700" },
+
+  filterRow: { paddingHorizontal: 12, gap: 7, paddingTop: 5, paddingBottom: 8 },
+  filterChip: {
+    height: 43, borderRadius: 22, borderWidth: 1, borderColor: "#A36F2D",
+    backgroundColor: "#050505", flexDirection: "row", alignItems: "center",
+    gap: 7, paddingHorizontal: 13,
+  },
+  genderChip: { borderColor: "#AB0E32" },
+  filterIcon: { color: "#E9B949", fontSize: 17 },
+  genderIcon: { color: "#F12686", fontSize: 20, fontWeight: "700" },
+  filterText: { color: "#EEEAE7", fontSize: 12, fontWeight: "500" },
+  chevron: { color: "#E9B949", fontSize: 15, marginLeft: 2 },
+
+  deckStage: {
+    flex: 1,
+    marginHorizontal: 14,
+    marginBottom: 88,
+    minHeight: 0,
+    position: "relative",
+  },
+  backCard: {
+    position: "absolute",
+    top: 16,
+    bottom: 12,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#C58B38",
+    overflow: "hidden",
+  },
+  backCard1: { left: 30, right: -16, opacity: 0.82 },
+  backCard2: { left: 54, right: -29, top: 31, bottom: 27, opacity: 0.57 },
+  backCount: {
+    position: "absolute", top: 12, right: 9, borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.72)", paddingHorizontal: 10, paddingVertical: 6,
+  },
+  backCountText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  frontCard: {
+    flex: 1,
+    marginRight: 26,
+    borderRadius: 24,
+    borderWidth: 1.3,
+    borderColor: "#D29A45",
+    overflow: "hidden",
+    backgroundColor: "#111",
+    shadowColor: "#E1A949",
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  cardImageRadius: { borderRadius: 23 },
+  cardTopShade: {
+    position: "absolute", left: 0, right: 0, top: 0, height: 120,
+    backgroundColor: "rgba(0,0,0,0.08)",
+  },
+  cardBottomShade: {
+    position: "absolute", left: 0, right: 0, bottom: 0, height: 360,
+    backgroundColor: "rgba(0,0,0,0.66)",
+  },
+  onlineBadge: {
+    position: "absolute", top: 14, left: 14, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(27,22,18,0.78)", flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 12, gap: 8,
+  },
+  greenDot: { width: 13, height: 13, borderRadius: 7, backgroundColor: "#16E73F" },
+  onlineBadgeText: { color: "#FFF", fontSize: 13, fontWeight: "600" },
+  cardMenuArea: { position: "absolute", top: 12, right: 10, flexDirection: "row", alignItems: "center", gap: 4 },
+  photoCount: {
+    height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.72)",
+    paddingHorizontal: 10, alignItems: "center", justifyContent: "center",
+  },
+  photoCountText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  moreButton: { width: 30, height: 40, alignItems: "center", justifyContent: "center" },
+  moreText: { color: "#FFF", fontSize: 29, lineHeight: 29, fontWeight: "700" },
+
+  profileInfo: {
+    position: "absolute", left: 15, right: 15, bottom: 16,
+  },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  name: {
+    color: "#FFF", fontSize: 29, lineHeight: 34, fontWeight: "800", maxWidth: "84%",
+    textShadowColor: "#000", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+  },
+  verified: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: "#1687F5",
+    alignItems: "center", justifyContent: "center", transform: [{ rotate: "-8deg" }],
+  },
+  verifiedText: { color: "#FFF", fontSize: 14, fontWeight: "900" },
+  location: { color: "#F5EEE9", fontSize: 15, lineHeight: 21, marginTop: 4, fontWeight: "500" },
+  bio: { color: "#F5F0EC", fontSize: 14, lineHeight: 20, marginTop: 7, fontWeight: "400" },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  tag: {
+    minHeight: 30, borderRadius: 15, borderWidth: 1, borderColor: "#D29A45",
+    paddingHorizontal: 12, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  tagText: { color: "#FFF", fontSize: 11, fontWeight: "500" },
+  actions: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 13 },
+  actionCircle: {
+    width: 55, height: 55, borderRadius: 28, borderWidth: 1.4,
+    alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,5,5,0.88)",
+  },
+  rewindCircle: { borderColor: "#D89B39" },
+  nopeCircle: { borderColor: "#ED2444" },
+  starCircle: { borderColor: "#D89B39" },
+  heartCircle: {
+    borderColor: "#FF4B66", backgroundColor: "rgba(161,0,26,0.70)",
+    shadowColor: "#FF183B", shadowOpacity: 0.66, shadowRadius: 11, elevation: 7,
+  },
+  boltCircle: { borderColor: "#D843F1" },
+  actionGlyph: { fontSize: 30, lineHeight: 32, fontWeight: "700" },
+  rewindGlyph: { color: "#F1B449" },
+  nopeGlyph: { color: "#F0294B", fontSize: 37 },
+  starGlyph: { color: "#F0B64A" },
+  heartGlyph: { color: "#FF6A85" },
+  boltGlyph: { color: "#DD4DF4" },
+
+  emptyWrap: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 26, paddingBottom: 105,
+  },
+  emptyGlow: {
+    position: "absolute", width: 330, height: 330, borderRadius: 165,
+    backgroundColor: "rgba(145,0,18,0.18)", top: "10%",
+  },
+  emptyLock: {
+    width: 145, height: 145, borderRadius: 73, borderWidth: 2,
+    borderColor: "#E9B949", alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(17,5,5,0.85)", shadowColor: "#E51D32",
+    shadowOpacity: 0.45, shadowRadius: 24, elevation: 8,
+  },
+  emptyTitle: { color: "#FFF", fontSize: 29, lineHeight: 35, fontWeight: "800", textAlign: "center", marginTop: 40 },
+  emptyText: { color: "#9F9995", fontSize: 15, textAlign: "center", lineHeight: 22, marginTop: 12 },
+  emptyButton: {
+    width: "100%", height: 66, borderRadius: 33, marginTop: 36,
+    backgroundColor: "#9D061B", borderWidth: 1.2, borderColor: "#F0C75D",
+    alignItems: "center", justifyContent: "center", shadowColor: "#E51D32",
+    shadowOpacity: 0.38, shadowRadius: 15, elevation: 7,
+  },
+  emptyButtonText: { color: "#FFF", fontSize: 20, fontWeight: "800" },
+  emptyArrow: { position: "absolute", right: 24, color: "#F1C95F", fontSize: 34, fontWeight: "200" },
 });
