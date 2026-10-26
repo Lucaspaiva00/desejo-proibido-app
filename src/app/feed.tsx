@@ -364,8 +364,18 @@ export default function Feed() {
               </View>
 
               <View style={styles.actions}>
-                <Pressable style={[styles.actionCircle, styles.rewindCircle]} onPress={voltarPerfil}>
-                  <Text style={[styles.actionGlyph, styles.rewindGlyph]}>↶</Text>
+                <Pressable
+                  disabled={indice === 0}
+                  style={[
+                    styles.actionCircle,
+                    styles.rewindCircle,
+                    indice === 0 && styles.rewindCircleDisabled,
+                  ]}
+                  onPress={voltarPerfil}
+                >
+                  <View style={styles.rewindInnerRing}>
+                    <Text style={[styles.actionGlyph, styles.rewindGlyph]}>↺</Text>
+                  </View>
                 </Pressable>
                 <Pressable style={[styles.actionCircle, styles.nopeCircle]} onPress={pular}>
                   <Text style={[styles.actionGlyph, styles.nopeGlyph]}>×</Text>
@@ -562,7 +572,29 @@ const styles = StyleSheet.create({
     width: 55, height: 55, borderRadius: 28, borderWidth: 1.4,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,5,5,0.88)",
   },
-  rewindCircle: { borderColor: "#D89B39" },
+  rewindCircle: {
+    borderColor: "#E2AA43",
+    borderWidth: 1.7,
+    backgroundColor: "rgba(5,4,2,0.96)",
+    shadowColor: "#E2AA43",
+    shadowOpacity: 0.28,
+    shadowRadius: 9,
+    elevation: 6,
+  },
+  rewindCircleDisabled: {
+    opacity: 0.46,
+    shadowOpacity: 0,
+  },
+  rewindInnerRing: {
+    width: 43,
+    height: 43,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(226,170,67,0.30)",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(18,11,3,0.82)",
+  },
   nopeCircle: { borderColor: "#ED2444" },
   starCircle: { borderColor: "#D89B39" },
   heartCircle: {
@@ -571,7 +603,14 @@ const styles = StyleSheet.create({
   },
   boltCircle: { borderColor: "#D843F1" },
   actionGlyph: { fontSize: 30, lineHeight: 32, fontWeight: "700" },
-  rewindGlyph: { color: "#F1B449" },
+  rewindGlyph: {
+    color: "#F4B947",
+    fontSize: 34,
+    lineHeight: 36,
+    fontWeight: "500",
+    textShadowColor: "rgba(244,185,71,0.32)",
+    textShadowRadius: 5,
+  },
   nopeGlyph: { color: "#F0294B", fontSize: 37 },
   starGlyph: { color: "#F0B64A" },
   heartGlyph: { color: "#FF6A85" },
