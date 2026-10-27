@@ -1,3 +1,4 @@
+import { SymbolView } from "expo-symbols";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
@@ -24,7 +25,54 @@ import {
   denunciarUsuario,
   pularUsuario,
 } from "../services/feed";
+import { getRealtimeSocket } from "../services/liveSocket";
 import { obterToken } from "../storage/auth";
+
+type GenderFilter = "FEMININO" | "MASCULINO" | "Qualquer";
+type LocationFilter = "cidade" | "estado" | "qualquer";
+type SortFilter = "recent" | "boost" | "random";
+
+type FeedFilterState = {
+  genero: GenderFilter;
+  idadeMin: number;
+  idadeMax: number;
+  local: LocationFilter;
+  somenteComFoto: boolean;
+  somenteVerificados: boolean;
+  ordenarPor: SortFilter;
+};
+
+type SymbolNames = {
+  ios: string;
+  android: string;
+  web: string;
+};
+
+const ICONS: Record<string, SymbolNames> = {
+  vip: { ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" },
+  bell: { ios: "bell.fill", android: "notifications", web: "notifications" },
+  coin: { ios: "creditcard.fill", android: "paid", web: "paid" },
+  plus: { ios: "plus", android: "add", web: "add" },
+  discover: { ios: "safari.fill", android: "explore", web: "explore" },
+  online: { ios: "circle.fill", android: "circle", web: "circle" },
+  nearby: { ios: "location.fill", android: "near_me", web: "near_me" },
+  new: { ios: "sparkles", android: "auto_awesome", web: "auto_awesome" },
+  filters: { ios: "slider.horizontal.3", android: "tune", web: "tune" },
+  all: { ios: "line.3.horizontal.decrease.circle", android: "filter_list", web: "filter_list" },
+  gender: { ios: "person.2.fill", android: "group", web: "group" },
+  age: { ios: "calendar", android: "calendar_month", web: "calendar_month" },
+  photo: { ios: "photo.stack.fill", android: "photo_library", web: "photo_library" },
+  more: { ios: "ellipsis", android: "more_vert", web: "more_vert" },
+  verified: { ios: "checkmark.seal.fill", android: "verified", web: "verified" },
+  rewind: { ios: "arrow.uturn.backward", android: "undo", web: "undo" },
+  close: { ios: "xmark", android: "close", web: "close" },
+  star: { ios: "star.fill", android: "star", web: "star" },
+  heart: { ios: "heart.fill", android: "favorite", web: "favorite" },
+  bolt: { ios: "bolt.fill", android: "bolt", web: "bolt" },
+  chevron: { ios: "chevron.right", android: "chevron_right", web: "chevron_right" },
+  reset: { ios: "arrow.counterclockwise", android: "restart_alt", web: "restart_alt" },
+  check: { ios: "checkmark", android: "check", web: "check" },
+};
 
 const PREVIEW_USER = {
   id: "__preview__",
@@ -40,6 +88,14 @@ const PREVIEW_USER = {
   },
 };
 
+const AGE_OPTIONS = [
+  { label: "18–25", min: 18, max: 25 },
+  { label: "26–35", min: 26, max: 35 },
+  { label: "36–45", min: 36, max: 45 },
+  { label: "46–60", min: 46, max: 60 },
+  { label: "Todas", min: 18, max: 99 },
+] as const;
+
 function idadeDe(nascimento?: string | Date | null) {
   if (!nascimento) return null;
   const data = new Date(nascimento);
@@ -49,6 +105,39 @@ function idadeDe(nascimento?: string | Date | null) {
   const mes = hoje.getMonth() - data.getMonth();
   if (mes < 0 || (mes === 0 && hoje.getDate() < data.getDate())) idade -= 1;
   return idade;
+}
+
+function Icon({
+  name,
+  size = 22,
+  color = "#DDB059",
+  style,
+}: {
+  name: SymbolNames;
+  size?: number;
+  color?: string;
+  style?: any;
+}) {
+  return <SymbolView name={name as any} size={size} tintColor={color} style={style} />;
+}
+
+function defaultFiltersForProfile(perfil: any): FeedFilterState {
+  const genero = String(perfil?.genero || "").toUpperCase();
+  const generoPreferido: GenderFilter = genero.includes("MASC")
+    ? "FEMININO"
+    : genero.includes("FEM")
+      ? "MASCULINO"
+      : "Qualquer";
+
+  return {
+    genero: generoPreferido,
+    idadeMin: 18,
+    idadeMax: 45,
+    local: "qualquer",
+    somenteComFoto: false,
+    somenteVerificados: false,
+    ordenarPor: "recent",
+  };
 }
 
 export default function Feed() {
@@ -64,14 +153,19 @@ export default function Feed() {
   const [vip, setVip] = useState(false);
   const [meuPerfil, setMeuPerfil] = useState<any>(null);
   const [fotoCount, setFotoCount] = useState(1);
-  const [modo, setModo] = useState("Descobrir");
-  const [generoFiltro, setGeneroFiltro] = useState<"FEMININO" | "MASCULINO" | "Qualquer">("FEMININO");
-  const [idadeMin, setIdadeMin] = useState(18);
-  const [idadeMax, setIdadeMax] = useState(45);
-  const [localFiltro, setLocalFiltro] = useState<"cidade" | "estado" | "qualquer">("cidade");
-  const [somenteComFoto, setSomenteComFoto] = useState(false);
-  const [somenteVerificados, setSomenteVerificados] = useState(false);
-  const [ordenarPor, setOrdenarPor] = useState<"recent" | "boost" | "random">("recent");
+  const [modo, setModo] = useState<"Descobrir" | "Online" | "Perto de você" | "Novos">("Descobrir");
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
+
+  const [filtros, setFiltros] = useState<FeedFilterState>({
+    genero: "Qualquer",
+    idadeMin: 18,
+    idadeMax: 45,
+    local: "qualquer",
+    somenteComFoto: false,
+    somenteVerificados: false,
+    ordenarPor: "recent",
+  });
+  const [filtrosDraft, setFiltrosDraft] = useState<FeedFilterState>(filtros);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   useEffect(() => {
@@ -80,7 +174,10 @@ export default function Feed() {
 
   async function inicializar() {
     const perfil = await carregarResumo();
-    await carregar(perfil);
+    const iniciais = defaultFiltersForProfile(perfil);
+    setFiltros(iniciais);
+    setFiltrosDraft(iniciais);
+    await carregar(iniciais, perfil, "Descobrir");
   }
 
   const usuario = usuarios[indice];
@@ -125,35 +222,96 @@ export default function Feed() {
     }
   }
 
-  function montarFiltros(perfilBase: any = meuPerfil) {
+  function montarParams(estado: FeedFilterState, perfilBase: any = meuPerfil) {
     return {
-      ordenarPor,
-      take: 50,
-      genero: generoFiltro === "Qualquer" ? "Qualquer" : generoFiltro,
-      idadeMin,
-      idadeMax,
-      somenteComFoto,
-      somenteVerificados,
-      ...(localFiltro === "cidade" && perfilBase?.cidade
+      ordenarPor: estado.ordenarPor,
+      take: 100,
+      genero: estado.genero,
+      idadeMin: estado.idadeMin,
+      idadeMax: estado.idadeMax,
+      somenteComFoto: estado.somenteComFoto,
+      somenteVerificados: estado.somenteVerificados,
+      ...(estado.local === "cidade" && perfilBase?.cidade
         ? { cidade: perfilBase.cidade, estado: perfilBase?.estado || "" }
         : {}),
-      ...(localFiltro === "estado" && perfilBase?.estado
+      ...(estado.local === "estado" && perfilBase?.estado
         ? { estado: perfilBase.estado }
         : {}),
     };
   }
 
-  async function carregar(perfilBase: any = meuPerfil, override: any = {}) {
+  async function obterPresenca(rows: any[]) {
+    if (previewAtivo) {
+      setOnlineIds(new Set(["__preview__"]));
+      return new Set(["__preview__"]);
+    }
+
+    const ids = rows.map((item) => String(item?.id || "")).filter(Boolean);
+    if (!ids.length) {
+      setOnlineIds(new Set());
+      return new Set<string>();
+    }
+
+    try {
+      const socket = await getRealtimeSocket();
+
+      const result = await new Promise<Set<string>>((resolve) => {
+        let resolved = false;
+
+        const finish = (set: Set<string>) => {
+          if (resolved) return;
+          resolved = true;
+          socket.off("presence:list", onPresence);
+          resolve(set);
+        };
+
+        const onPresence = (payload: any) => {
+          const lista = Array.isArray(payload) ? payload : payload?.items || [];
+          const set = new Set<string>(
+            lista
+              .filter((item: any) => item?.online)
+              .map((item: any) => String(item.userId))
+          );
+          finish(set);
+        };
+
+        socket.on("presence:list", onPresence);
+        socket.emit("presence:watch", { userIds: ids });
+        setTimeout(() => finish(new Set()), 1800);
+      });
+
+      setOnlineIds(result);
+      return result;
+    } catch {
+      setOnlineIds(new Set());
+      return new Set<string>();
+    }
+  }
+
+  async function carregar(
+    estado: FeedFilterState = filtros,
+    perfilBase: any = meuPerfil,
+    modoAlvo: typeof modo = modo
+  ) {
     try {
       setLoading(true);
+
       if (previewAtivo) {
-        setUsuarios([PREVIEW_USER, PREVIEW_USER, PREVIEW_USER]);
+        const previewRows = [PREVIEW_USER, { ...PREVIEW_USER, id: "__preview2__" }, { ...PREVIEW_USER, id: "__preview3__" }];
+        setUsuarios(modoAlvo === "Online" ? previewRows.slice(0, 2) : previewRows);
+        setOnlineIds(new Set(previewRows.map((item) => item.id)));
         setIndice(0);
         return;
       }
 
-      const dados = await buscarFeed({ ...montarFiltros(perfilBase), ...override });
-      setUsuarios(dados || []);
+      const dados = await buscarFeed(montarParams(estado, perfilBase));
+      const rows = Array.isArray(dados) ? dados : [];
+      const presenca = await obterPresenca(rows);
+      const finais = modoAlvo === "Online"
+        ? rows.filter((item: any) => presenca.has(String(item.id)))
+        : rows;
+
+      setUsuarios(finais);
       setIndice(0);
     } catch (error) {
       console.log(error);
@@ -231,97 +389,46 @@ export default function Feed() {
     }
   }
 
-  async function aplicarFiltroRapido(tipo: "todos" | "perto" | "novos") {
-    if (tipo === "todos") {
-      setGeneroFiltro("Qualquer");
-      setIdadeMin(18);
-      setIdadeMax(99);
-      setLocalFiltro("qualquer");
-      setSomenteComFoto(false);
-      setSomenteVerificados(false);
-      setOrdenarPor("recent");
-      setModo("Descobrir");
-      await carregar(meuPerfil, {
-        genero: "Qualquer",
-        idadeMin: 18,
-        idadeMax: 99,
-        ordenarPor: "recent",
-        cidade: undefined,
-        estado: undefined,
-        somenteComFoto: false,
-        somenteVerificados: false,
-      });
-      return;
+  async function mudarModo(novoModo: typeof modo) {
+    let next = { ...filtros };
+
+    if (novoModo === "Descobrir") {
+      next = defaultFiltersForProfile(meuPerfil);
+      setFiltros(next);
+      setFiltrosDraft(next);
+    } else if (novoModo === "Perto de você") {
+      next = { ...next, local: "cidade" };
+      setFiltros(next);
+      setFiltrosDraft(next);
+    } else if (novoModo === "Novos") {
+      next = { ...next, ordenarPor: "recent" };
+      setFiltros(next);
+      setFiltrosDraft(next);
     }
 
-    if (tipo === "perto") {
-      setLocalFiltro("cidade");
-      setModo("Perto de você");
-      await carregar(meuPerfil, {
-        cidade: meuPerfil?.cidade || "",
-        estado: meuPerfil?.estado || "",
-      });
-      return;
-    }
-
-    setOrdenarPor("recent");
-    setModo("Novos");
-    await carregar(meuPerfil, { ordenarPor: "recent" });
+    setModo(novoModo);
+    await carregar(next, meuPerfil, novoModo);
   }
 
-  async function alternarGenero() {
-    const proximo = generoFiltro === "FEMININO"
-      ? "MASCULINO"
-      : generoFiltro === "MASCULINO"
-        ? "Qualquer"
-        : "FEMININO";
-    setGeneroFiltro(proximo);
-    await carregar(meuPerfil, { genero: proximo });
+  function abrirFiltros() {
+    setFiltrosDraft({ ...filtros });
+    setFiltrosAbertos(true);
   }
 
-  async function alternarIdade() {
-    const faixas = [
-      [18, 45],
-      [18, 25],
-      [26, 35],
-      [36, 45],
-      [46, 60],
-      [18, 99],
-    ] as const;
-    const atual = faixas.findIndex(([min, max]) => min === idadeMin && max === idadeMax);
-    const [min, max] = faixas[(atual + 1 + faixas.length) % faixas.length];
-    setIdadeMin(min);
-    setIdadeMax(max);
-    await carregar(meuPerfil, { idadeMin: min, idadeMax: max });
-  }
-
-  async function alternarLocal() {
-    const proximo = localFiltro === "cidade"
-      ? "estado"
-      : localFiltro === "estado"
-        ? "qualquer"
-        : "cidade";
-
-    setLocalFiltro(proximo);
-
-    if (proximo === "cidade") {
-      await carregar(meuPerfil, {
-        cidade: meuPerfil?.cidade || "",
-        estado: meuPerfil?.estado || "",
-      });
-    } else if (proximo === "estado") {
-      await carregar(meuPerfil, {
-        cidade: undefined,
-        estado: meuPerfil?.estado || "",
-      });
-    } else {
-      await carregar(meuPerfil, { cidade: undefined, estado: undefined });
-    }
-  }
-
-  async function aplicarMaisFiltros() {
+  async function aplicarFiltros() {
+    const next = { ...filtrosDraft };
+    setFiltros(next);
     setFiltrosAbertos(false);
-    await carregar();
+    await carregar(next, meuPerfil, modo);
+  }
+
+  async function limparFiltros() {
+    const next = defaultFiltersForProfile(meuPerfil);
+    setFiltros(next);
+    setFiltrosDraft(next);
+    setModo("Descobrir");
+    setFiltrosAbertos(false);
+    await carregar(next, meuPerfil, "Descobrir");
   }
 
   function abrirMaisAcoes() {
@@ -337,16 +444,39 @@ export default function Feed() {
     ]);
   }
 
-  const generoDesejado = useMemo(() => {
-    const genero = String(meuPerfil?.genero || "").toUpperCase();
-    if (genero.includes("MASC")) return "Mulheres";
-    if (genero.includes("FEM")) return "Homens";
-    return "Mulheres";
-  }, [meuPerfil?.genero]);
+  const filtroCount = useMemo(() => {
+    const padrao = defaultFiltersForProfile(meuPerfil);
+    let count = 0;
+    if (filtros.genero !== padrao.genero) count += 1;
+    if (filtros.idadeMin !== padrao.idadeMin || filtros.idadeMax !== padrao.idadeMax) count += 1;
+    if (filtros.local !== padrao.local) count += 1;
+    if (filtros.somenteComFoto) count += 1;
+    if (filtros.somenteVerificados) count += 1;
+    if (filtros.ordenarPor !== padrao.ordenarPor) count += 1;
+    return count;
+  }, [filtros, meuPerfil]);
 
   const localLabel = meuPerfil?.cidade && meuPerfil?.estado
     ? `${meuPerfil.cidade}, ${meuPerfil.estado}`
-    : "Salvador, BA";
+    : "Sua região";
+
+  const generoLabel = filtros.genero === "FEMININO"
+    ? "Mulheres"
+    : filtros.genero === "MASCULINO"
+      ? "Homens"
+      : "Todos";
+
+  const idadeLabel = filtros.idadeMax === 99
+    ? "18+ anos"
+    : `${filtros.idadeMin}–${filtros.idadeMax} anos`;
+
+  const localFiltroLabel = filtros.local === "cidade"
+    ? localLabel
+    : filtros.local === "estado"
+      ? meuPerfil?.estado || "Seu estado"
+      : "Qualquer lugar";
+
+  const cardOnline = !!usuario && (previewAtivo || onlineIds.has(String(usuario.id)));
 
   if (loading) {
     return (
@@ -368,8 +498,8 @@ export default function Feed() {
       <View style={[styles.topArea, { paddingTop: Math.max(insets.top, 8) }]}>
         <View style={styles.brandRow}>
           <Pressable style={styles.vipPill} onPress={() => navigation.openDrawer?.()}>
-            <Text style={styles.vipCrown}>♕</Text>
-            <Text style={styles.vipPillText}>{vip ? "VIP" : "VIP"}</Text>
+            <Icon name={ICONS.vip} size={19} color="#E9B949" />
+            <Text style={styles.vipPillText}>VIP</Text>
           </Pressable>
 
           <Pressable style={styles.brand} onPress={() => navigation.openDrawer?.()}>
@@ -385,64 +515,83 @@ export default function Feed() {
 
           <View style={styles.topActions}>
             <View style={styles.bellWrap}>
-              <Text style={styles.bell}>♧</Text>
+              <Icon name={ICONS.bell} size={24} color="#F7F4F1" />
               <View style={styles.bellBadge}><Text style={styles.bellBadgeText}>3</Text></View>
             </View>
+
             <View style={styles.creditPill}>
-              <Text style={styles.coin}>◉</Text>
+              <Icon name={ICONS.coin} size={18} color="#E9B949" />
               <Text style={styles.creditValue}>{saldo.toLocaleString("pt-BR")}</Text>
-              <View style={styles.plus}><Text style={styles.plusText}>+</Text></View>
+              <View style={styles.plus}>
+                <Icon name={ICONS.plus} size={20} color="#FFF" />
+              </View>
             </View>
           </View>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeRow}>
           {[
-            ["Descobrir", "♦"],
-            ["Online", "●"],
-            ["Perto de você", "●"],
-            ["Novos", "★"],
-            ["Mais filtros", "☷"],
-          ].map(([label, icon]) => {
-            const active = modo === label;
-            const onPress = () => {
-              if (label === "Descobrir") aplicarFiltroRapido("todos");
-              else if (label === "Perto de você") aplicarFiltroRapido("perto");
-              else if (label === "Novos") aplicarFiltroRapido("novos");
-              else if (label === "Mais filtros") setFiltrosAbertos(true);
-              else Alert.alert("Online", "O backend ainda não registra presença/última atividade. Os demais filtros já estão funcionais.");
-            };
+            { label: "Descobrir" as const, icon: ICONS.discover },
+            { label: "Online" as const, icon: ICONS.online },
+            { label: "Perto de você" as const, icon: ICONS.nearby },
+            { label: "Novos" as const, icon: ICONS.new },
+          ].map((item) => {
+            const active = modo === item.label;
             return (
-              <Pressable key={label} onPress={onPress} style={[styles.modeChip, active && styles.modeChipActive]}>
-                <Text style={[styles.modeIcon, label === "Online" && styles.onlineGreen]}>{icon}</Text>
-                <Text style={[styles.modeText, active && styles.modeTextActive]}>{label}</Text>
+              <Pressable
+                key={item.label}
+                onPress={() => mudarModo(item.label)}
+                style={({ pressed }) => [
+                  styles.modeChip,
+                  active && styles.modeChipActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Icon
+                  name={item.icon}
+                  size={18}
+                  color={item.label === "Online" ? "#23DE63" : active ? "#FFF4D3" : "#E9B949"}
+                />
+                <Text style={[styles.modeText, active && styles.modeTextActive]}>{item.label}</Text>
               </Pressable>
             );
           })}
+
+          <Pressable
+            onPress={abrirFiltros}
+            style={({ pressed }) => [
+              styles.modeChip,
+              filtroCount > 0 && styles.modeChipFiltered,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Icon name={ICONS.filters} size={18} color="#E9B949" />
+            <Text style={styles.modeText}>Filtros{filtroCount ? ` (${filtroCount})` : ""}</Text>
+          </Pressable>
         </ScrollView>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <Pressable style={styles.filterChip} onPress={() => aplicarFiltroRapido("todos")}>
-            <Text style={styles.filterIcon}>▽</Text><Text style={styles.filterText}>Todos</Text>
+          <Pressable style={styles.filterChip} onPress={abrirFiltros}>
+            <Icon name={ICONS.all} size={17} color="#E9B949" />
+            <Text style={styles.filterText}>Todos</Text>
           </Pressable>
-          <Pressable style={styles.filterChip} onPress={alternarLocal}>
-            <Text style={styles.filterIcon}>●</Text>
-            <Text style={styles.filterText}>
-              {localFiltro === "cidade" ? localLabel : localFiltro === "estado" ? meuPerfil?.estado || "UF" : "Qualquer lugar"}
-            </Text>
-            <Text style={styles.chevron}>⌄</Text>
+
+          <Pressable style={[styles.filterChip, filtros.local !== "qualquer" && styles.filterChipActive]} onPress={abrirFiltros}>
+            <Icon name={ICONS.nearby} size={17} color="#E9B949" />
+            <Text style={styles.filterText}>{localFiltroLabel}</Text>
+            <Icon name={ICONS.chevron} size={14} color="#9F7A35" />
           </Pressable>
-          <Pressable style={[styles.filterChip, styles.genderChip]} onPress={alternarGenero}>
-            <Text style={styles.genderIcon}>{generoFiltro === "MASCULINO" ? "♂" : generoFiltro === "FEMININO" ? "♀" : "⚥"}</Text>
-            <Text style={styles.filterText}>
-              {generoFiltro === "FEMININO" ? "Mulheres" : generoFiltro === "MASCULINO" ? "Homens" : "Qualquer"}
-            </Text>
-            <Text style={styles.chevron}>⌄</Text>
+
+          <Pressable style={[styles.filterChip, filtros.genero !== "Qualquer" && styles.filterChipActive]} onPress={abrirFiltros}>
+            <Icon name={ICONS.gender} size={17} color="#E34A85" />
+            <Text style={styles.filterText}>{generoLabel}</Text>
+            <Icon name={ICONS.chevron} size={14} color="#9F7A35" />
           </Pressable>
-          <Pressable style={styles.filterChip} onPress={alternarIdade}>
-            <Text style={styles.filterIcon}>♔</Text>
-            <Text style={styles.filterText}>{idadeMin} - {idadeMax === 99 ? "99+" : idadeMax} anos</Text>
-            <Text style={styles.chevron}>⌄</Text>
+
+          <Pressable style={styles.filterChip} onPress={abrirFiltros}>
+            <Icon name={ICONS.age} size={17} color="#E9B949" />
+            <Text style={styles.filterText}>{idadeLabel}</Text>
+            <Icon name={ICONS.chevron} size={14} color="#9F7A35" />
           </Pressable>
         </ScrollView>
       </View>
@@ -451,23 +600,36 @@ export default function Feed() {
         <View style={styles.emptyWrap}>
           <View style={styles.emptyGlow} />
           <View style={styles.emptyLock}><LockHeart size={102} /></View>
-          <Text style={styles.emptyTitle}>Você já viu todos os perfis</Text>
-          <Text style={styles.emptyText}>Atualize para descobrir novas conexões disponíveis.</Text>
-          <Pressable style={styles.emptyButton} onPress={carregar}>
+          <Text style={styles.emptyTitle}>
+            {modo === "Online" ? "Ninguém online agora" : "Você já viu todos os perfis"}
+          </Text>
+          <Text style={styles.emptyText}>
+            {modo === "Online"
+              ? "Assim que alguém ficar online, aparecerá aqui para você."
+              : "Ajuste seus filtros ou atualize para descobrir novas conexões."}
+          </Text>
+          <Pressable style={styles.emptyButton} onPress={() => carregar(filtros, meuPerfil, modo)}>
             <Text style={styles.emptyButtonText}>Buscar novamente</Text>
-            <Text style={styles.emptyArrow}>›</Text>
+            <Icon name={ICONS.chevron} size={24} color="#F1C95F" style={styles.emptyArrowIcon} />
           </Pressable>
         </View>
       ) : (
         <View style={styles.deckStage}>
           {proximo2?.fotoPrincipal ? (
             <ImageBackground source={{ uri: proximo2.fotoPrincipal }} style={[styles.backCard, styles.backCard2]} imageStyle={styles.cardImageRadius}>
-              <View style={styles.backCount}><Text style={styles.backCountText}>▧ 6</Text></View>
+              <View style={styles.backCount}>
+                <Icon name={ICONS.photo} size={15} color="#FFF" />
+                <Text style={styles.backCountText}>6</Text>
+              </View>
             </ImageBackground>
           ) : null}
+
           {proximo1?.fotoPrincipal ? (
             <ImageBackground source={{ uri: proximo1.fotoPrincipal }} style={[styles.backCard, styles.backCard1]} imageStyle={styles.cardImageRadius}>
-              <View style={styles.backCount}><Text style={styles.backCountText}>▧ 8</Text></View>
+              <View style={styles.backCount}>
+                <Icon name={ICONS.photo} size={15} color="#FFF" />
+                <Text style={styles.backCountText}>8</Text>
+              </View>
             </ImageBackground>
           ) : null}
 
@@ -480,15 +642,20 @@ export default function Feed() {
             <View style={styles.cardTopShade} />
             <View style={styles.cardBottomShade} />
 
-            <View style={styles.onlineBadge}>
-              <View style={styles.greenDot} />
-              <Text style={styles.onlineBadgeText}>Online</Text>
-            </View>
+            {cardOnline ? (
+              <View style={styles.onlineBadge}>
+                <View style={styles.greenDot} />
+                <Text style={styles.onlineBadgeText}>Online</Text>
+              </View>
+            ) : null}
 
             <View style={styles.cardMenuArea}>
-              <View style={styles.photoCount}><Text style={styles.photoCountText}>▧ {previewAtivo ? 12 : fotoCount}</Text></View>
+              <View style={styles.photoCount}>
+                <Icon name={ICONS.photo} size={15} color="#FFF" />
+                <Text style={styles.photoCountText}>{previewAtivo ? 12 : fotoCount}</Text>
+              </View>
               <Pressable onPress={abrirMaisAcoes} style={styles.moreButton}>
-                <Text style={styles.moreText}>⋮</Text>
+                <Icon name={ICONS.more} size={24} color="#FFF" />
               </Pressable>
             </View>
 
@@ -497,13 +664,18 @@ export default function Feed() {
                 <Text numberOfLines={1} style={styles.name}>
                   {usuario?.perfil?.nome || "Perfil"}{idadeDe(usuario?.perfil?.nascimento) ? `, ${idadeDe(usuario?.perfil?.nascimento)}` : ""}
                 </Text>
-                {usuario?.perfil?.verificado || previewAtivo ? <View style={styles.verified}><Text style={styles.verifiedText}>✓</Text></View> : null}
+                {usuario?.perfil?.verificado || previewAtivo ? (
+                  <Icon name={ICONS.verified} size={23} color="#2389F7" />
+                ) : null}
               </View>
 
-              <Text style={styles.location}>
-                ● {usuario?.perfil?.cidade || "Salvador"}, {usuario?.perfil?.estado || "BA"}
-                {usuario?.perfil?.cidade && meuPerfil?.cidade && usuario.perfil.cidade === meuPerfil.cidade ? " • 2 km de você" : ""}
-              </Text>
+              <View style={styles.locationRow}>
+                <Icon name={ICONS.nearby} size={16} color="#E9B949" />
+                <Text style={styles.location}>
+                  {usuario?.perfil?.cidade || "Salvador"}, {usuario?.perfil?.estado || "BA"}
+                  {usuario?.perfil?.cidade && meuPerfil?.cidade && usuario.perfil.cidade === meuPerfil.cidade ? " • perto de você" : ""}
+                </Text>
+              </View>
 
               <Text numberOfLines={2} style={styles.bio}>
                 {usuario?.perfil?.bio || "Gosto de boas conversas, viagens, vinhos e aproveitar o lado bom da vida... ❤️"}
@@ -518,28 +690,26 @@ export default function Feed() {
               <View style={styles.actions}>
                 <Pressable
                   disabled={indice === 0}
-                  style={[
-                    styles.actionCircle,
-                    styles.rewindCircle,
-                    indice === 0 && styles.rewindCircleDisabled,
-                  ]}
+                  style={[styles.actionCircle, styles.rewindCircle, indice === 0 && styles.rewindCircleDisabled]}
                   onPress={voltarPerfil}
                 >
-                  <View style={styles.rewindInnerRing}>
-                    <Text style={[styles.actionGlyph, styles.rewindGlyph]}>↺</Text>
-                  </View>
+                  <Icon name={ICONS.rewind} size={29} color="#F4B947" />
                 </Pressable>
+
                 <Pressable style={[styles.actionCircle, styles.nopeCircle]} onPress={pular}>
-                  <Text style={[styles.actionGlyph, styles.nopeGlyph]}>×</Text>
+                  <Icon name={ICONS.close} size={31} color="#F0294B" />
                 </Pressable>
+
                 <Pressable style={[styles.actionCircle, styles.starCircle]} onPress={curtir}>
-                  <Text style={[styles.actionGlyph, styles.starGlyph]}>★</Text>
+                  <Icon name={ICONS.star} size={27} color="#F0B64A" />
                 </Pressable>
+
                 <Pressable style={[styles.actionCircle, styles.heartCircle]} onPress={curtir}>
-                  <Text style={[styles.actionGlyph, styles.heartGlyph]}>♥</Text>
+                  <Icon name={ICONS.heart} size={28} color="#FF6985" />
                 </Pressable>
+
                 <Pressable style={[styles.actionCircle, styles.boltCircle]} onPress={curtir}>
-                  <Text style={[styles.actionGlyph, styles.boltGlyph]}>ϟ</Text>
+                  <Icon name={ICONS.bolt} size={28} color="#DD4DF4" />
                 </Pressable>
               </View>
             </View>
@@ -550,50 +720,132 @@ export default function Feed() {
       <Modal
         visible={filtrosAbertos}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setFiltrosAbertos(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setFiltrosAbertos(false)}>
           <Pressable style={styles.filterSheet} onPress={() => {}}>
-            <Text style={styles.filterSheetEyebrow}>FILTROS</Text>
-            <Text style={styles.filterSheetTitle}>Refine suas conexões</Text>
-
-            <Pressable
-              style={[styles.filterToggle, somenteComFoto && styles.filterToggleActive]}
-              onPress={() => setSomenteComFoto((v) => !v)}
-            >
-              <Text style={styles.filterToggleText}>Somente perfis com foto</Text>
-              <Text style={styles.filterToggleValue}>{somenteComFoto ? "Ativo" : "Todos"}</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.filterToggle, somenteVerificados && styles.filterToggleActive]}
-              onPress={() => setSomenteVerificados((v) => !v)}
-            >
-              <Text style={styles.filterToggleText}>Somente verificados</Text>
-              <Text style={styles.filterToggleValue}>{somenteVerificados ? "Ativo" : "Todos"}</Text>
-            </Pressable>
-
-            <Text style={styles.filterGroupLabel}>ORDENAÇÃO</Text>
-            <View style={styles.orderRow}>
-              {[
-                ["recent", "Novos"],
-                ["boost", "Destaques"],
-                ["random", "Aleatório"],
-              ].map(([value, label]) => (
-                <Pressable
-                  key={value}
-                  onPress={() => setOrdenarPor(value as "recent" | "boost" | "random")}
-                  style={[styles.orderChip, ordenarPor === value && styles.orderChipActive]}
-                >
-                  <Text style={[styles.orderChipText, ordenarPor === value && styles.orderChipTextActive]}>{label}</Text>
-                </Pressable>
-              ))}
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.filterSheetEyebrow}>DESCOBRIR</Text>
+                <Text style={styles.filterSheetTitle}>Filtros</Text>
+              </View>
+              <Pressable style={styles.sheetClose} onPress={() => setFiltrosAbertos(false)}>
+                <Icon name={ICONS.close} size={21} color="#D8D0CB" />
+              </Pressable>
             </View>
 
-            <Pressable style={styles.applyFiltersButton} onPress={aplicarMaisFiltros}>
-              <Text style={styles.applyFiltersText}>Aplicar filtros</Text>
-            </Pressable>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+              <Text style={styles.filterGroupLabel}>LOCALIZAÇÃO</Text>
+              <View style={styles.optionRow}>
+                {[
+                  ["cidade", "Minha cidade"],
+                  ["estado", "Meu estado"],
+                  ["qualquer", "Qualquer lugar"],
+                ].map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => setFiltrosDraft((old) => ({ ...old, local: value as LocationFilter }))}
+                    style={[styles.optionChip, filtrosDraft.local === value && styles.optionChipActive]}
+                  >
+                    <Text style={[styles.optionChipText, filtrosDraft.local === value && styles.optionChipTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.filterGroupLabel}>QUEM VOCÊ QUER VER</Text>
+              <View style={styles.optionRow}>
+                {[
+                  ["FEMININO", "Mulheres"],
+                  ["MASCULINO", "Homens"],
+                  ["Qualquer", "Todos"],
+                ].map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => setFiltrosDraft((old) => ({ ...old, genero: value as GenderFilter }))}
+                    style={[styles.optionChip, filtrosDraft.genero === value && styles.optionChipActive]}
+                  >
+                    <Text style={[styles.optionChipText, filtrosDraft.genero === value && styles.optionChipTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.filterGroupLabel}>IDADE</Text>
+              <View style={styles.optionRow}>
+                {AGE_OPTIONS.map((item) => {
+                  const active = filtrosDraft.idadeMin === item.min && filtrosDraft.idadeMax === item.max;
+                  return (
+                    <Pressable
+                      key={item.label}
+                      onPress={() => setFiltrosDraft((old) => ({ ...old, idadeMin: item.min, idadeMax: item.max }))}
+                      style={[styles.optionChip, active && styles.optionChipActive]}
+                    >
+                      <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>{item.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.filterGroupLabel}>PREFERÊNCIAS</Text>
+              <Pressable
+                style={[styles.filterToggle, filtrosDraft.somenteComFoto && styles.filterToggleActive]}
+                onPress={() => setFiltrosDraft((old) => ({ ...old, somenteComFoto: !old.somenteComFoto }))}
+              >
+                <View style={styles.toggleLeft}>
+                  <View style={styles.toggleIcon}>
+                    <Icon name={ICONS.photo} size={20} color="#E9B949" />
+                  </View>
+                  <Text style={styles.filterToggleText}>Somente perfis com foto</Text>
+                </View>
+                <View style={[styles.switchTrack, filtrosDraft.somenteComFoto && styles.switchTrackOn]}>
+                  <View style={[styles.switchKnob, filtrosDraft.somenteComFoto && styles.switchKnobOn]} />
+                </View>
+              </Pressable>
+
+              <Pressable
+                style={[styles.filterToggle, filtrosDraft.somenteVerificados && styles.filterToggleActive]}
+                onPress={() => setFiltrosDraft((old) => ({ ...old, somenteVerificados: !old.somenteVerificados }))}
+              >
+                <View style={styles.toggleLeft}>
+                  <View style={styles.toggleIcon}>
+                    <Icon name={ICONS.verified} size={20} color="#E9B949" />
+                  </View>
+                  <Text style={styles.filterToggleText}>Somente verificados</Text>
+                </View>
+                <View style={[styles.switchTrack, filtrosDraft.somenteVerificados && styles.switchTrackOn]}>
+                  <View style={[styles.switchKnob, filtrosDraft.somenteVerificados && styles.switchKnobOn]} />
+                </View>
+              </Pressable>
+
+              <Text style={styles.filterGroupLabel}>ORDENAÇÃO</Text>
+              <View style={styles.optionRow}>
+                {[
+                  ["recent", "Mais novos"],
+                  ["boost", "Destaques"],
+                  ["random", "Aleatório"],
+                ].map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => setFiltrosDraft((old) => ({ ...old, ordenarPor: value as SortFilter }))}
+                    style={[styles.optionChip, filtrosDraft.ordenarPor === value && styles.optionChipActive]}
+                  >
+                    <Text style={[styles.optionChipText, filtrosDraft.ordenarPor === value && styles.optionChipTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={styles.sheetActions}>
+              <Pressable style={styles.resetButton} onPress={limparFiltros}>
+                <Icon name={ICONS.reset} size={20} color="#DDB059" />
+                <Text style={styles.resetButtonText}>Limpar</Text>
+              </Pressable>
+              <Pressable style={styles.applyFiltersButton} onPress={aplicarFiltros}>
+                <Text style={styles.applyFiltersText}>Aplicar filtros</Text>
+                <Icon name={ICONS.check} size={20} color="#FFF" />
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -610,8 +862,10 @@ const styles = StyleSheet.create({
 
   topArea: {
     zIndex: 20,
-    backgroundColor: "rgba(0,0,0,0.98)",
+    backgroundColor: "rgba(0,0,0,0.985)",
     paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(221,176,89,0.12)",
   },
   brandRow: {
     minHeight: 72,
@@ -620,11 +874,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   vipPill: {
-    height: 44,
-    minWidth: 74,
-    borderRadius: 22,
+    height: 42,
+    minWidth: 72,
+    borderRadius: 21,
     borderWidth: 1,
-    borderColor: "#A86C23",
+    borderColor: "rgba(221,176,89,0.48)",
     backgroundColor: "#080604",
     flexDirection: "row",
     alignItems: "center",
@@ -632,8 +886,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     gap: 6,
   },
-  vipCrown: { color: "#E9B949", fontSize: 19 },
-  vipPillText: { color: "#E9B949", fontSize: 15, fontWeight: "700" },
+  vipPillText: { color: "#E9B949", fontSize: 14, fontWeight: "800" },
   brand: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center" },
   brandTextWrap: { marginLeft: 4, alignItems: "center" },
   brandTitleRow: { flexDirection: "row", alignItems: "baseline" },
@@ -641,52 +894,51 @@ const styles = StyleSheet.create({
   brandRed: { color: "#E51D32", fontFamily: "serif", fontSize: 18, fontWeight: "700" },
   brandTagline: { color: "#D6B35A", fontSize: 6.5, fontWeight: "800", letterSpacing: 1.8, marginTop: 1 },
   topActions: { flexDirection: "row", alignItems: "center", gap: 6 },
-  bellWrap: { width: 33, height: 42, alignItems: "center", justifyContent: "center" },
-  bell: { color: "#F7F4F1", fontSize: 26, transform: [{ rotate: "180deg" }] },
+  bellWrap: { width: 34, height: 42, alignItems: "center", justifyContent: "center" },
   bellBadge: {
-    position: "absolute", top: 1, right: -1, width: 19, height: 19, borderRadius: 10,
+    position: "absolute", top: 0, right: -1, width: 18, height: 18, borderRadius: 9,
     backgroundColor: "#E51D32", alignItems: "center", justifyContent: "center",
   },
-  bellBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "900" },
+  bellBadgeText: { color: "#FFF", fontSize: 9, fontWeight: "900" },
   creditPill: {
-    height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#A86C23",
+    height: 42, borderRadius: 21, borderWidth: 1, borderColor: "rgba(221,176,89,0.48)",
     backgroundColor: "#080604", flexDirection: "row", alignItems: "center",
     paddingLeft: 10, paddingRight: 3, gap: 7,
   },
-  coin: { color: "#E9B949", fontSize: 18 },
-  creditValue: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  creditValue: { color: "#FFF", fontSize: 13, fontWeight: "700" },
   plus: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: "#C9252C",
+    width: 32, height: 32, borderRadius: 16, backgroundColor: "#C9252C",
     borderWidth: 1, borderColor: "#E3B65C", alignItems: "center", justifyContent: "center",
   },
-  plusText: { color: "#FFF", fontSize: 26, lineHeight: 28, fontWeight: "400" },
 
   modeRow: { paddingHorizontal: 12, gap: 7, paddingVertical: 4 },
   modeChip: {
-    height: 46, borderRadius: 23, borderWidth: 1, borderColor: "#8E5C24",
-    backgroundColor: "#050505", flexDirection: "row", alignItems: "center",
-    justifyContent: "center", gap: 8, paddingHorizontal: 15,
+    height: 43, borderRadius: 22, borderWidth: 1, borderColor: "rgba(221,176,89,0.38)",
+    backgroundColor: "#060606", flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 7, paddingHorizontal: 14,
   },
   modeChipActive: {
-    backgroundColor: "#A40B20", borderColor: "#FF5B66",
-    shadowColor: "#E51D32", shadowOpacity: 0.55, shadowRadius: 10, elevation: 7,
+    backgroundColor: "#9A071C", borderColor: "#FF5364",
+    shadowColor: "#E51D32", shadowOpacity: 0.44, shadowRadius: 9, elevation: 6,
   },
-  modeIcon: { color: "#E9B949", fontSize: 17 },
-  onlineGreen: { color: "#18E646" },
-  modeText: { color: "#EFEDEB", fontSize: 13, fontWeight: "500" },
-  modeTextActive: { color: "#FFF", fontWeight: "700" },
+  modeChipFiltered: {
+    borderColor: "#DDB059",
+    backgroundColor: "rgba(221,176,89,0.07)",
+  },
+  modeText: { color: "#E8E3DF", fontSize: 12, fontWeight: "600" },
+  modeTextActive: { color: "#FFF", fontWeight: "800" },
 
   filterRow: { paddingHorizontal: 12, gap: 7, paddingTop: 5, paddingBottom: 8 },
   filterChip: {
-    height: 43, borderRadius: 22, borderWidth: 1, borderColor: "#A36F2D",
+    height: 40, borderRadius: 20, borderWidth: 1, borderColor: "rgba(221,176,89,0.28)",
     backgroundColor: "#050505", flexDirection: "row", alignItems: "center",
-    gap: 7, paddingHorizontal: 13,
+    gap: 6, paddingHorizontal: 12,
   },
-  genderChip: { borderColor: "#AB0E32" },
-  filterIcon: { color: "#E9B949", fontSize: 17 },
-  genderIcon: { color: "#F12686", fontSize: 20, fontWeight: "700" },
-  filterText: { color: "#EEEAE7", fontSize: 12, fontWeight: "500" },
-  chevron: { color: "#E9B949", fontSize: 15, marginLeft: 2 },
+  filterChipActive: {
+    borderColor: "rgba(221,176,89,0.62)",
+    backgroundColor: "rgba(221,176,89,0.055)",
+  },
+  filterText: { color: "#EEEAE7", fontSize: 11, fontWeight: "600" },
 
   deckStage: {
     flex: 1,
@@ -708,9 +960,10 @@ const styles = StyleSheet.create({
   backCard2: { left: 54, right: -29, top: 31, bottom: 27, opacity: 0.57 },
   backCount: {
     position: "absolute", top: 12, right: 9, borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.72)", paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: "rgba(0,0,0,0.74)", paddingHorizontal: 10, paddingVertical: 7,
+    flexDirection: "row", alignItems: "center", gap: 5,
   },
-  backCountText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
+  backCountText: { color: "#FFF", fontSize: 11, fontWeight: "800" },
   frontCard: {
     flex: 1,
     marginRight: 26,
@@ -734,174 +987,142 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.66)",
   },
   onlineBadge: {
-    position: "absolute", top: 14, left: 14, height: 38, borderRadius: 19,
-    backgroundColor: "rgba(27,22,18,0.78)", flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 12, gap: 8,
+    position: "absolute", top: 14, left: 14, height: 36, borderRadius: 18,
+    backgroundColor: "rgba(16,16,16,0.82)", flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 12, gap: 7,
   },
-  greenDot: { width: 13, height: 13, borderRadius: 7, backgroundColor: "#16E73F" },
-  onlineBadgeText: { color: "#FFF", fontSize: 13, fontWeight: "600" },
+  greenDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22E760" },
+  onlineBadgeText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
   cardMenuArea: { position: "absolute", top: 12, right: 10, flexDirection: "row", alignItems: "center", gap: 4 },
   photoCount: {
-    height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.72)",
+    height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.74)",
     paddingHorizontal: 10, alignItems: "center", justifyContent: "center",
+    flexDirection: "row", gap: 5,
   },
-  photoCountText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
-  moreButton: { width: 30, height: 40, alignItems: "center", justifyContent: "center" },
-  moreText: { color: "#FFF", fontSize: 29, lineHeight: 29, fontWeight: "700" },
+  photoCountText: { color: "#FFF", fontSize: 11, fontWeight: "800" },
+  moreButton: { width: 34, height: 40, alignItems: "center", justifyContent: "center" },
 
-  profileInfo: {
-    position: "absolute", left: 15, right: 15, bottom: 16,
-  },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  profileInfo: { position: "absolute", left: 15, right: 15, bottom: 16 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   name: {
     color: "#FFF", fontSize: 29, lineHeight: 34, fontWeight: "800", maxWidth: "84%",
     textShadowColor: "#000", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
   },
-  verified: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: "#1687F5",
-    alignItems: "center", justifyContent: "center", transform: [{ rotate: "-8deg" }],
-  },
-  verifiedText: { color: "#FFF", fontSize: 14, fontWeight: "900" },
-  location: { color: "#F5EEE9", fontSize: 15, lineHeight: 21, marginTop: 4, fontWeight: "500" },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  location: { color: "#F5EEE9", fontSize: 14, lineHeight: 20, fontWeight: "600" },
   bio: { color: "#F5F0EC", fontSize: 14, lineHeight: 20, marginTop: 7, fontWeight: "400" },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   tag: {
     minHeight: 30, borderRadius: 15, borderWidth: 1, borderColor: "#D29A45",
     paddingHorizontal: 12, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.25)",
   },
-  tagText: { color: "#FFF", fontSize: 11, fontWeight: "500" },
+  tagText: { color: "#FFF", fontSize: 11, fontWeight: "600" },
+
   actions: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 13 },
   actionCircle: {
-    width: 55, height: 55, borderRadius: 28, borderWidth: 1.4,
-    alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,5,5,0.88)",
+    width: 55, height: 55, borderRadius: 28, borderWidth: 1.3,
+    alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,5,5,0.90)",
   },
   rewindCircle: {
-    borderColor: "#E2AA43",
-    borderWidth: 1.7,
-    backgroundColor: "rgba(5,4,2,0.96)",
-    shadowColor: "#E2AA43",
-    shadowOpacity: 0.28,
-    shadowRadius: 9,
-    elevation: 6,
+    borderColor: "#DDAE43", backgroundColor: "rgba(11,8,3,0.96)",
+    shadowColor: "#DDAE43", shadowOpacity: 0.18, shadowRadius: 7,
   },
-  rewindCircleDisabled: {
-    opacity: 0.46,
-    shadowOpacity: 0,
-  },
-  rewindInnerRing: {
-    width: 43,
-    height: 43,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(226,170,67,0.30)",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(18,11,3,0.82)",
-  },
-  nopeCircle: { borderColor: "#ED2444" },
-  starCircle: { borderColor: "#D89B39" },
+  rewindCircleDisabled: { opacity: 0.34, shadowOpacity: 0 },
+  nopeCircle: { borderColor: "#D82D45" },
+  starCircle: { borderColor: "#D39A3D" },
   heartCircle: {
-    borderColor: "#FF4B66", backgroundColor: "rgba(161,0,26,0.70)",
-    shadowColor: "#FF183B", shadowOpacity: 0.66, shadowRadius: 11, elevation: 7,
+    borderColor: "#FF5068", backgroundColor: "rgba(145,0,24,0.76)",
+    shadowColor: "#FF183B", shadowOpacity: 0.56, shadowRadius: 10, elevation: 7,
   },
-  boltCircle: { borderColor: "#D843F1" },
-  actionGlyph: { fontSize: 30, lineHeight: 32, fontWeight: "700" },
-  rewindGlyph: {
-    color: "#F4B947",
-    fontSize: 34,
-    lineHeight: 36,
-    fontWeight: "500",
-    textShadowColor: "rgba(244,185,71,0.32)",
-    textShadowRadius: 5,
-  },
-  nopeGlyph: { color: "#F0294B", fontSize: 37 },
-  starGlyph: { color: "#F0B64A" },
-  heartGlyph: { color: "#FF6A85" },
-  boltGlyph: { color: "#DD4DF4" },
+  boltCircle: { borderColor: "#B947D5" },
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.78)",
+    backgroundColor: "rgba(0,0,0,0.80)",
     alignItems: "center",
     justifyContent: "flex-end",
   },
   filterSheet: {
     width: "100%",
+    maxHeight: "82%",
     backgroundColor: "#070707",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
     borderColor: "rgba(221,176,89,0.30)",
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 34,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
   },
-  filterSheetEyebrow: {
-    color: "#DDB059",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 3,
+  sheetHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(221,176,89,0.38)",
+    alignSelf: "center",
+    marginBottom: 12,
   },
-  filterSheetTitle: {
-    color: "#FFF",
-    fontSize: 25,
-    fontWeight: "800",
-    marginTop: 7,
-    marginBottom: 19,
-  },
-  filterToggle: {
-    minHeight: 58,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(221,176,89,0.22)",
-    backgroundColor: "#0C0C0C",
-    paddingHorizontal: 16,
-    marginBottom: 10,
+  sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  filterToggleActive: {
-    borderColor: "#DDB059",
-    backgroundColor: "rgba(119,5,18,0.42)",
-  },
-  filterToggleText: { color: "#F5F1EE", fontSize: 14, fontWeight: "600" },
-  filterToggleValue: { color: "#DDB059", fontSize: 12, fontWeight: "800" },
-  filterGroupLabel: {
-    color: "#8F8781",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    marginTop: 12,
     marginBottom: 10,
   },
-  orderRow: { flexDirection: "row", gap: 8 },
-  orderChip: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 21,
-    borderWidth: 1,
-    borderColor: "rgba(221,176,89,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
+  sheetClose: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: "#101010",
+    borderWidth: 1, borderColor: "rgba(221,176,89,0.18)", alignItems: "center", justifyContent: "center",
   },
-  orderChipActive: {
-    backgroundColor: "#9D061B",
-    borderColor: "#F0C75D",
+  sheetScroll: { maxHeight: 470 },
+  filterSheetEyebrow: { color: "#DDB059", fontSize: 9, fontWeight: "800", letterSpacing: 2.8 },
+  filterSheetTitle: { color: "#FFF", fontSize: 26, fontWeight: "800", marginTop: 4 },
+  filterGroupLabel: {
+    color: "#A49C96", fontSize: 9, fontWeight: "900", letterSpacing: 2,
+    marginTop: 17, marginBottom: 9,
   },
-  orderChipText: { color: "#C7C0BB", fontSize: 12, fontWeight: "600" },
-  orderChipTextActive: { color: "#FFF", fontWeight: "800" },
+  optionRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  optionChip: {
+    minHeight: 38, borderRadius: 19, borderWidth: 1, borderColor: "rgba(221,176,89,0.24)",
+    backgroundColor: "#0B0B0B", paddingHorizontal: 13, alignItems: "center", justifyContent: "center",
+  },
+  optionChipActive: {
+    backgroundColor: "rgba(145,0,24,0.72)", borderColor: "#E8BC58",
+    shadowColor: "#E51D32", shadowOpacity: 0.22, shadowRadius: 5,
+  },
+  optionChipText: { color: "#BEB7B2", fontSize: 11, fontWeight: "600" },
+  optionChipTextActive: { color: "#FFF", fontWeight: "800" },
+
+  filterToggle: {
+    minHeight: 58, borderRadius: 16, borderWidth: 1, borderColor: "rgba(221,176,89,0.18)",
+    backgroundColor: "#0B0B0B", paddingHorizontal: 13, marginBottom: 9,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  filterToggleActive: { borderColor: "rgba(221,176,89,0.48)", backgroundColor: "rgba(98,0,13,0.25)" },
+  toggleLeft: { flexDirection: "row", alignItems: "center", flex: 1, gap: 10 },
+  toggleIcon: {
+    width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(221,176,89,0.05)",
+    alignItems: "center", justifyContent: "center",
+  },
+  filterToggleText: { color: "#F3EFEC", fontSize: 13, fontWeight: "700" },
+  switchTrack: {
+    width: 45, height: 25, borderRadius: 13, backgroundColor: "#292929",
+    padding: 3, justifyContent: "center",
+  },
+  switchTrackOn: { backgroundColor: "#8F0719" },
+  switchKnob: { width: 19, height: 19, borderRadius: 10, backgroundColor: "#777" },
+  switchKnobOn: { backgroundColor: "#F1C258", alignSelf: "flex-end" },
+
+  sheetActions: { flexDirection: "row", gap: 10, marginTop: 18 },
+  resetButton: {
+    height: 52, borderRadius: 26, minWidth: 110, borderWidth: 1, borderColor: "rgba(221,176,89,0.32)",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, backgroundColor: "#0B0B0B",
+  },
+  resetButtonText: { color: "#DDB059", fontSize: 13, fontWeight: "800" },
   applyFiltersButton: {
-    height: 58,
-    borderRadius: 29,
-    marginTop: 24,
-    backgroundColor: "#9D061B",
-    borderWidth: 1,
-    borderColor: "#F0C75D",
-    alignItems: "center",
-    justifyContent: "center",
+    flex: 1, height: 52, borderRadius: 26, backgroundColor: "#9D061B",
+    borderWidth: 1, borderColor: "#F0C75D", flexDirection: "row",
+    alignItems: "center", justifyContent: "center", gap: 8,
   },
-  applyFiltersText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  applyFiltersText: { color: "#FFF", fontSize: 14, fontWeight: "800" },
 
   emptyWrap: {
     flex: 1, alignItems: "center", justifyContent: "center",
@@ -926,5 +1147,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.38, shadowRadius: 15, elevation: 7,
   },
   emptyButtonText: { color: "#FFF", fontSize: 20, fontWeight: "800" },
-  emptyArrow: { position: "absolute", right: 24, color: "#F1C95F", fontSize: 34, fontWeight: "200" },
+  emptyArrowIcon: { position: "absolute", right: 22 },
+
+  pressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
 });
