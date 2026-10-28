@@ -87,7 +87,7 @@ const sections = [
 function DrawerContent(props: any) {
   const insets = useSafeAreaInsets();
   const activeRoute = props.state?.routeNames?.[props.state?.index];
-  const [nome, setNome] = useState("Lucas");
+  const [nome, setNome] = useState("Usuário");
   const [saldo, setSaldo] = useState(0);
   const [vip, setVip] = useState(false);
   const [foto, setFoto] = useState("");
@@ -98,7 +98,13 @@ function DrawerContent(props: any) {
 
   useEffect(() => {
     carregarResumo();
-  }, []);
+
+    const unsubscribe = props.navigation.addListener("drawerOpen", () => {
+      carregarResumo();
+    });
+
+    return unsubscribe;
+  }, [props.navigation]);
 
   async function authHeader() {
     const token = await obterToken();
@@ -119,7 +125,7 @@ function DrawerContent(props: any) {
       const fotos = Array.isArray(fotosRes.data) ? fotosRes.data : [];
       const principal = fotos.find((item: any) => item?.principal) || fotos[0];
 
-      setNome(perfil?.nome || usuario?.email?.split("@")?.[0] || "Lucas");
+      setNome(perfil?.nome || usuario?.email?.split("@")?.[0] || "Usuário");
       setSaldo(Number(usuario?.saldoCreditos || 0));
       setVip(!!(usuario?.premiumAtivo || usuario?.isPremium));
       setFoto(principal?.url || "");
