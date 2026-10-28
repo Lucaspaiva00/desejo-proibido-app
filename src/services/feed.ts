@@ -72,3 +72,16 @@ export async function denunciarUsuario(usuarioId: string) {
 
   return data;
 }
+
+
+export async function consumirRetornoFeed(perfilId?: string) {
+  const headers = await authHeader();
+
+  const { data } = await api.post(
+    "/carteira/feed-retorno",
+    { perfilId: perfilId || null },
+    { headers }
+  );
+
+  return data;
+}

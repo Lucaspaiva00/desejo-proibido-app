@@ -24,6 +24,7 @@ import {
   curtirUsuario,
   denunciarUsuario,
   pularUsuario,
+  consumirRetornoFeed,
 } from "../services/feed";
 import { getRealtimeSocket } from "../services/liveSocket";
 import { obterToken } from "../storage/auth";
@@ -364,8 +365,57 @@ export default function Feed() {
     }
   }
 
-  function voltarPerfil() {
-    setIndice((old) => Math.max(0, old - 1));
+  async function voltarPerfil() {
+    if (indice <= 0) return;
+
+    if (previewAtivo) {
+      setIndice((old) => Math.max(0, old - 1));
+      return;
+    }
+
+    const perfilAnterior = usuarios[indice - 1];
+
+    if (saldo < 10) {
+      Alert.alert(
+        "Créditos insuficientes",
+        "Voltar para o perfil anterior custa 10 créditos. Adicione créditos para usar este recurso.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Comprar créditos", onPress: () => navigation.navigate("creditos") },
+        ]
+      );
+      return;
+    }
+
+    try {
+      const resultado = await consumirRetornoFeed(perfilAnterior?.id);
+      setSaldo(Number(resultado?.saldoCreditos ?? Math.max(0, saldo - 10)));
+      setIndice((old) => Math.max(0, old - 1));
+    } catch (error: any) {
+      const status = Number(error?.response?.status || 0);
+      const saldoServidor = error?.response?.data?.saldoCreditos;
+
+      if (typeof saldoServidor === "number") {
+        setSaldo(saldoServidor);
+      }
+
+      if (status === 402) {
+        Alert.alert(
+          "Créditos insuficientes",
+          "Voltar para o perfil anterior custa 10 créditos.",
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Comprar créditos", onPress: () => navigation.navigate("creditos") },
+          ]
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Não foi possível voltar",
+        error?.response?.data?.erro || "Tente novamente em instantes."
+      );
+    }
   }
 
   async function bloquear() {
@@ -693,7 +743,12 @@ export default function Feed() {
                   style={[styles.actionCircle, styles.rewindCircle, indice === 0 && styles.rewindCircleDisabled]}
                   onPress={voltarPerfil}
                 >
-                  <Icon name={ICONS.rewind} size={29} color="#F4B947" />
+                  <Icon name={ICONS.rewind} size={27} color="#F4B947" />
+                  {indice > 0 ? (
+                    <View style={styles.rewindCostBadge}>
+                      <Text style={styles.rewindCostText}>10</Text>
+                    </View>
+                  ) : null}
                 </Pressable>
 
                 <Pressable style={[styles.actionCircle, styles.nopeCircle]} onPress={pular}>
@@ -1028,6 +1083,26 @@ const styles = StyleSheet.create({
     shadowColor: "#DDAE43", shadowOpacity: 0.18, shadowRadius: 7,
   },
   rewindCircleDisabled: { opacity: 0.34, shadowOpacity: 0 },
+  rewindCostBadge: {
+    position: "absolute",
+    right: -4,
+    bottom: -4,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 5,
+    backgroundColor: "#161009",
+    borderWidth: 1,
+    borderColor: "#E9B949",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rewindCostText: {
+    color: "#F4C95E",
+    fontSize: 9,
+    lineHeight: 11,
+    fontWeight: "900",
+  },
   nopeCircle: { borderColor: "#D82D45" },
   starCircle: { borderColor: "#D39A3D" },
   heartCircle: {
