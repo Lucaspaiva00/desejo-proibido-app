@@ -51,7 +51,6 @@ type SymbolNames = {
 
 const ICONS: Record<string, SymbolNames> = {
   vip: { ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" },
-  bell: { ios: "bell.fill", android: "notifications", web: "notifications" },
   coin: { ios: "creditcard.fill", android: "paid", web: "paid" },
   plus: { ios: "plus", android: "add", web: "add" },
   discover: { ios: "safari.fill", android: "explore", web: "explore" },
@@ -564,11 +563,6 @@ export default function Feed() {
           </Pressable>
 
           <View style={styles.topActions}>
-            <View style={styles.bellWrap}>
-              <Icon name={ICONS.bell} size={24} color="#F7F4F1" />
-              <View style={styles.bellBadge}><Text style={styles.bellBadgeText}>3</Text></View>
-            </View>
-
             <View style={styles.creditPill}>
               <Icon name={ICONS.coin} size={18} color="#E9B949" />
               <Text style={styles.creditValue}>{saldo.toLocaleString("pt-BR")}</Text>
@@ -949,12 +943,6 @@ const styles = StyleSheet.create({
   brandRed: { color: "#E51D32", fontFamily: "serif", fontSize: 18, fontWeight: "700" },
   brandTagline: { color: "#D6B35A", fontSize: 6.5, fontWeight: "800", letterSpacing: 1.8, marginTop: 1 },
   topActions: { flexDirection: "row", alignItems: "center", gap: 6 },
-  bellWrap: { width: 34, height: 42, alignItems: "center", justifyContent: "center" },
-  bellBadge: {
-    position: "absolute", top: 0, right: -1, width: 18, height: 18, borderRadius: 9,
-    backgroundColor: "#E51D32", alignItems: "center", justifyContent: "center",
-  },
-  bellBadgeText: { color: "#FFF", fontSize: 9, fontWeight: "900" },
   creditPill: {
     height: 42, borderRadius: 21, borderWidth: 1, borderColor: "rgba(221,176,89,0.48)",
     backgroundColor: "#080604", flexDirection: "row", alignItems: "center",
