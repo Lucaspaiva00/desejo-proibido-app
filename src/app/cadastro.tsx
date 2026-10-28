@@ -24,9 +24,11 @@ export default function Cadastro() {
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [erroCadastro, setErroCadastro] = useState("");
 
   async function cadastrar() {
     const mail = email.trim().toLowerCase();
+    setErroCadastro("");
 
     if (!mail) return Alert.alert("Atenção", "Informe seu e-mail.");
     if (senha.length < 6) return Alert.alert("Atenção", "A senha deve ter pelo menos 6 caracteres.");
@@ -55,10 +57,21 @@ export default function Cadastro() {
         { text: "Entrar", onPress: () => router.replace("/") },
       ]);
     } catch (error: any) {
-      Alert.alert(
-        "Não foi possível cadastrar",
-        error?.response?.data?.erro || error?.response?.data?.detalhe || "Tente novamente em instantes."
-      );
+      const status = Number(error?.response?.status || 0);
+      const mensagemApi =
+        error?.response?.data?.erro ||
+        error?.response?.data?.detalhe ||
+        "Tente novamente em instantes.";
+
+      const mensagem = status === 409
+        ? "Este e-mail já está cadastrado. Entre na sua conta ou recupere a senha."
+        : mensagemApi;
+
+      setErroCadastro(mensagem);
+
+      if (Platform.OS !== "web") {
+        Alert.alert("Não foi possível cadastrar", mensagem);
+      }
     } finally {
       setLoading(false);
     }
@@ -139,6 +152,23 @@ export default function Cadastro() {
                 </Text>
               </Pressable>
 
+              {erroCadastro ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorTitle}>Não foi possível criar a conta</Text>
+                  <Text style={styles.errorText}>{erroCadastro}</Text>
+                  {erroCadastro.includes("já está cadastrado") ? (
+                    <View style={styles.errorActions}>
+                      <Pressable onPress={() => router.replace("/")} style={styles.errorAction}>
+                        <Text style={styles.errorActionText}>Entrar</Text>
+                      </Pressable>
+                      <Pressable onPress={() => router.push("/recuperar-senha")} style={styles.errorAction}>
+                        <Text style={styles.errorActionText}>Recuperar senha</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
               <GoldButton title={loading ? "Criando conta..." : "Criar perfil"} onPress={cadastrar} disabled={loading} red />
 
               <Pressable onPress={() => router.replace("/")} style={styles.loginLink}>
@@ -174,6 +204,29 @@ const styles = StyleSheet.create({
   input: { flex: 1, color: "#FFF", fontSize: 14, paddingVertical: 0 },
   eye: { color: "#C49D55", fontSize: 19, paddingLeft: 10 },
   terms: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginVertical: 22 },
+  errorBox: {
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,74,94,0.58)",
+    backgroundColor: "rgba(111,0,14,0.34)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  errorTitle: { color: "#FF7D8D", fontSize: 12, fontWeight: "900", marginBottom: 4 },
+  errorText: { color: "#F3D9DC", fontSize: 11, lineHeight: 16 },
+  errorActions: { flexDirection: "row", gap: 8, marginTop: 11 },
+  errorAction: {
+    minHeight: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "rgba(241,201,93,0.42)",
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.24)",
+  },
+  errorActionText: { color: "#F1CD70", fontSize: 10, fontWeight: "800" },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: "#D3B45F", backgroundColor: "#070707", alignItems: "center", justifyContent: "center", marginTop: 1 },
   checkboxActive: { backgroundColor: "#9E071A", borderColor: "#F1C95D" },
   check: { color: "#FFF", fontSize: 13, fontWeight: "900" },
