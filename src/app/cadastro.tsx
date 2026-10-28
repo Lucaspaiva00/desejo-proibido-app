@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DP_SERIF, Eyebrow, GoldButton, LuxuryBackground, LuxuryBrand } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { api } from "../services/api";
-import { salvarToken } from "../storage/auth";
+import { removerToken } from "../storage/auth";
 
 export default function Cadastro() {
   const [email, setEmail] = useState("");
@@ -43,19 +43,22 @@ export default function Cadastro() {
         aceitouTermos: true,
       });
 
-      if (data?.token) {
-        await salvarToken(data.token);
-        Alert.alert(
-          "Conta criada",
-          "Agora complete seu perfil para aproveitar o Desejo Proibido.",
-          [{ text: "Continuar", onPress: () => router.replace("/perfil") }]
-        );
+      await removerToken();
+
+      const concluirCadastro = () => {
+        router.replace("/");
+      };
+
+      if (Platform.OS === "web") {
+        concluirCadastro();
         return;
       }
 
-      Alert.alert("Conta criada", "Seu cadastro foi concluído. Faça login para continuar.", [
-        { text: "Entrar", onPress: () => router.replace("/") },
-      ]);
+      Alert.alert(
+        "Conta criada",
+        "Seu cadastro foi concluído com sucesso. Entre com seu e-mail e senha para continuar.",
+        [{ text: "Ir para o login", onPress: concluirCadastro }]
+      );
     } catch (error: any) {
       const status = Number(error?.response?.status || 0);
       const mensagemApi =
