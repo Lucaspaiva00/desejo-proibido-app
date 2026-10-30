@@ -1,5 +1,7 @@
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { SymbolView } from "expo-symbols";
+import { router, useNavigation } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,240 +12,758 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DP_SERIF, LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { buscarMatches } from "../services/matches";
 
+type MatchItem = {
+  id: string | number;
+  conversaId?: string;
+  outro?: {
+    id?: string;
+    idade?: number;
+    perfilVerificado?: boolean;
+    perfil?: {
+      nome?: string;
+      cidade?: string;
+      estado?: string;
+      idade?: number;
+      nascimento?: string | Date;
+      verificado?: boolean;
+    };
+    fotos?: Array<{
+      id?: string | number;
+      url?: string;
+      principal?: boolean;
+    }>;
+  };
+};
+
+const BOTTOM_ITEMS = [
+  {
+    label: "Descobrir",
+    route: "/feed",
+    symbol: { ios: "safari.fill", android: "explore", web: "explore" },
+  },
+  {
+    label: "Matches",
+    route: "/matches",
+    symbol: { ios: "heart.fill", android: "favorite", web: "favorite" },
+  },
+  {
+    label: "Conversas",
+    route: "/conversas",
+    symbol: { ios: "bubble.left.and.bubble.right.fill", android: "forum", web: "forum" },
+  },
+  {
+    label: "Carteira",
+    route: "/carteira",
+    symbol: { ios: "wallet.bifold.fill", android: "account_balance_wallet", web: "account_balance_wallet" },
+  },
+  {
+    label: "Perfil",
+    route: "/perfil",
+    symbol: { ios: "person.crop.circle.fill", android: "account_circle", web: "account_circle" },
+  },
+] as const;
+
+function calcularIdade(nascimento?: string | Date) {
+  if (!nascimento) return null;
+
+  const data = new Date(nascimento);
+  if (Number.isNaN(data.getTime())) return null;
+
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - data.getFullYear();
+  const mes = hoje.getMonth() - data.getMonth();
+
+  if (mes < 0 || (mes === 0 && hoje.getDate() < data.getDate())) {
+    idade -= 1;
+  }
+
+  return idade;
+}
+
+function localizacao(perfil: MatchItem["outro"] extends infer T ? any : never) {
+  const cidade = perfil?.cidade?.trim();
+  const estado = perfil?.estado?.trim();
+
+  if (cidade && estado) return `${cidade} • ${estado}`;
+  if (cidade) return cidade;
+  if (estado) return estado;
+  return "Localização não informada";
+}
+
 export default function Matches() {
-  const [matches, setMatches] = useState<any[]>([]);
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+
+  const [matches, setMatches] = useState<MatchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
-
-  async function carregar() {
-    try {
-      const data = await buscarMatches();
-      setMatches(data || []);
-    } catch (err) {
-      console.log(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
     carregar();
   }, []);
 
-  const matchesFiltrados = matches.filter((item) => {
-    const perfil = item.outro?.perfil;
-    return `${perfil?.nome || ""} ${perfil?.cidade || ""}`.toLowerCase().includes(busca.toLowerCase());
-  });
+  async function carregar() {
+    try {
+      setLoading(true);
+      const data = await buscarMatches();
+      setMatches(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.log("Erro ao carregar matches:", error);
+      setMatches([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  if (loading) {
-    return (
-      <LuxuryScreen>
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={DP.colors.gold} />
-        </View>
-      </LuxuryScreen>
-    );
+  const matchesFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+
+    if (!termo) return matches;
+
+    return matches.filter((item) => {
+      const perfil = item.outro?.perfil;
+      const texto = [
+        perfil?.nome,
+        perfil?.cidade,
+        perfil?.estado,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return texto.includes(termo);
+    });
+  }, [matches, busca]);
+
+  function abrirMenu() {
+    if (navigation?.openDrawer) navigation.openDrawer();
+    else navigation?.getParent?.()?.openDrawer?.();
+  }
+
+  function abrirConversa(item: MatchItem) {
+    if (!item.conversaId) return;
+    router.push(`/chat?conversaId=${item.conversaId}`);
+  }
+
+  function abrirPerfil(item: MatchItem) {
+    if (!item.outro?.id) return;
+    router.push(`/usuario?id=${item.outro.id}`);
   }
 
   return (
-    <LuxuryScreen>
-      <LuxuryHeader />
+    <LuxuryScreen style={styles.screen}>
+      <StatusBar style="light" />
+
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
+        <Pressable
+          onPress={abrirMenu}
+          hitSlop={12}
+          style={({ pressed }) => [styles.menuButton, pressed && styles.pressed]}
+        >
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+        </Pressable>
+
+        <View style={styles.brand}>
+          <LockHeart size={54} />
+          <Text style={styles.brandText}>Desejo Proibido</Text>
+        </View>
+
+        <View style={styles.headerSpacer} />
+      </View>
+
       <View style={styles.content}>
-        <Eyebrow>CONEXÕES</Eyebrow>
-        <View style={styles.titleRow}>
-          <View style={{ flex: 1 }}>
+        <View style={styles.eyebrowRow}>
+          <Text style={styles.eyebrow}>CONEXÕES</Text>
+          <View style={styles.eyebrowLine} />
+        </View>
+
+        <View style={styles.headingRow}>
+          <View style={styles.headingCopy}>
             <Text style={styles.title}>Seus Matches</Text>
             <Text style={styles.subtitle}>Pessoas que também escolheram você.</Text>
           </View>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{matches.length}</Text>
+
+          <View style={styles.countGlow}>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{matches.length}</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.searchWrap}>
-          <Text style={styles.searchIcon}>⌕</Text>
+          <SymbolView
+            name={{ ios: "magnifyingglass", android: "search", web: "search" } as any}
+            size={23}
+            tintColor="#E8C165"
+            style={styles.searchSymbol}
+          />
           <TextInput
-            placeholder="Buscar por nome ou cidade"
-            placeholderTextColor="#79716C"
             value={busca}
             onChangeText={setBusca}
+            placeholder="Buscar por nome ou cidade"
+            placeholderTextColor="#7E7772"
+            autoCapitalize="none"
+            autoCorrect={false}
             style={styles.search}
           />
         </View>
 
-        <FlatList
-          data={matchesFiltrados}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const perfil = item.outro?.perfil;
-            const foto = item.outro?.fotos?.[0]?.url;
-            const nome = perfil?.nome || "Usuário";
-            const idade = perfil?.idade || item.outro?.idade;
-            return (
-              <View style={styles.card}>
-                {foto ? (
-                  <Image source={{ uri: foto }} style={styles.photo} />
-                ) : (
-                  <View style={[styles.photo, styles.photoFallback]}>
-                    <Text style={styles.fallbackText}>{nome.charAt(0).toUpperCase()}</Text>
-                  </View>
-                )}
+        {loading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator size="small" color={DP.colors.gold} />
+            <Text style={styles.loadingText}>Carregando seus matches...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={matchesFiltrados}
+            keyExtractor={(item) => String(item.id)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.list,
+              matchesFiltrados.length === 0 && styles.listEmpty,
+            ]}
+            renderItem={({ item }) => {
+              const perfil = item.outro?.perfil || {};
+              const fotos = Array.isArray(item.outro?.fotos) ? item.outro?.fotos || [] : [];
+              const principal =
+                fotos.find((foto) => foto?.principal)?.url ||
+                fotos[0]?.url ||
+                "";
 
-                <View style={styles.info}>
-                  <View style={styles.nameRow}>
-                    <Text numberOfLines={1} style={styles.name}>{nome}{idade ? `, ${idade}` : ""}</Text>
-                    {item.outro?.perfilVerificado ? <Text style={styles.verified}>●</Text> : null}
-                  </View>
-                  <Text style={styles.location}>
-                    {perfil?.cidade || "Localização não informada"}
-                    {perfil?.estado ? ` • ${perfil.estado}` : ""}
-                  </Text>
+              const nome = perfil.nome?.trim() || "Usuário";
+              const idade =
+                perfil.idade ||
+                item.outro?.idade ||
+                calcularIdade(perfil.nascimento);
 
-                  <View style={styles.actions}>
-                    <Pressable
-                      style={({ pressed }) => [styles.chatBtn, pressed && styles.pressed]}
-                      onPress={() => router.push(`/chat?conversaId=${item.conversaId}`)}
-                    >
-                      <Text style={styles.chatBtnText}>Conversar</Text>
-                    </Pressable>
-                    <Pressable
-                      style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
-                      onPress={() => router.push(`/usuario?id=${item.outro.id}`)}
-                    >
-                      <Text style={styles.profileBtnText}>Ver perfil</Text>
-                    </Pressable>
+              const verificado =
+                !!item.outro?.perfilVerificado ||
+                !!perfil.verificado;
+
+              return (
+                <View style={styles.card}>
+                  <View style={styles.photoShell}>
+                    {principal ? (
+                      <Image
+                        source={{ uri: principal }}
+                        resizeMode="cover"
+                        style={styles.photo}
+                      />
+                    ) : (
+                      <View style={styles.photoFallback}>
+                        <Text style={styles.fallbackInitial}>
+                          {nome.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.cardInfo}>
+                    <View style={styles.nameRow}>
+                      <Text numberOfLines={1} style={styles.name}>
+                        {nome}{idade ? `, ${idade}` : ""}
+                      </Text>
+                      {verificado ? (
+                        <SymbolView
+                          name={{ ios: "checkmark.seal.fill", android: "verified", web: "verified" } as any}
+                          size={17}
+                          tintColor="#E9B949"
+                          style={styles.verified}
+                        />
+                      ) : null}
+                    </View>
+
+                    <Text numberOfLines={1} style={styles.location}>
+                      {localizacao(perfil)}
+                    </Text>
+
+                    <View style={styles.actions}>
+                      <Pressable
+                        disabled={!item.conversaId}
+                        onPress={() => abrirConversa(item)}
+                        style={({ pressed }) => [
+                          styles.chatButton,
+                          !item.conversaId && styles.buttonDisabled,
+                          pressed && item.conversaId && styles.buttonPressed,
+                        ]}
+                      >
+                        <Text style={styles.chatButtonText}>Conversar</Text>
+                      </Pressable>
+
+                      <Pressable
+                        disabled={!item.outro?.id}
+                        onPress={() => abrirPerfil(item)}
+                        style={({ pressed }) => [
+                          styles.profileButton,
+                          !item.outro?.id && styles.buttonDisabled,
+                          pressed && item.outro?.id && styles.buttonPressed,
+                        ]}
+                      >
+                        <Text style={styles.profileButtonText}>Ver perfil</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
+              );
+            }}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <View style={styles.emptyHeart}>
+                  <SymbolView
+                    name={{ ios: "heart.fill", android: "favorite", web: "favorite" } as any}
+                    size={36}
+                    tintColor="#E33A50"
+                    style={styles.emptyHeartIcon}
+                  />
+                </View>
+                <Text style={styles.emptyTitle}>
+                  {busca ? "Nenhum match encontrado" : "Seus novos matches aparecerão aqui"}
+                </Text>
+                <Text style={styles.emptyText}>
+                  {busca
+                    ? "Tente buscar por outro nome ou cidade."
+                    : "Quando o interesse acontecer dos dois lados, a conexão ficará disponível nesta tela."}
+                </Text>
               </View>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <View style={styles.emptyHeart}><Text style={styles.emptyHeartText}>♡</Text></View>
-              <Text style={styles.emptyTitle}>Nenhum match encontrado</Text>
-              <Text style={styles.emptyText}>Novas conexões aparecem aqui quando o interesse acontece dos dois lados.</Text>
-            </View>
-          }
-        />
+            }
+          />
+        )}
       </View>
-      <DPBottomNav />
+
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <View style={styles.bottomTopLine} />
+        <View style={styles.bottomItems}>
+          {BOTTOM_ITEMS.map((item) => {
+            const active = item.route === "/matches";
+
+            return (
+              <Pressable
+                key={item.route}
+                onPress={() => router.replace(item.route)}
+                style={({ pressed }) => [
+                  styles.bottomItem,
+                  pressed && styles.bottomPressed,
+                ]}
+              >
+                {active ? <View style={styles.activeLine} /> : null}
+
+                <SymbolView
+                  name={item.symbol as any}
+                  size={28}
+                  tintColor={active ? "#F11E3A" : "#E8DED3"}
+                  style={styles.bottomIcon}
+                />
+
+                <Text style={[styles.bottomLabel, active && styles.bottomLabelActive]}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
     </LuxuryScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
-  content: { flex: 1, paddingHorizontal: 20 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 14, marginBottom: 20 },
+  screen: {
+    backgroundColor: "#020202",
+  },
+
+  topBar: {
+    minHeight: 92,
+    paddingHorizontal: 24,
+    paddingBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  menuButton: {
+    width: 44,
+    height: 44,
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 5,
+  },
+  menuLine: {
+    width: 29,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#F2D071",
+  },
+  brand: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginRight: 4,
+  },
+  brandText: {
+    color: "#F4D07A",
+    fontFamily: DP_SERIF,
+    fontSize: 29,
+    lineHeight: 34,
+    fontWeight: "700",
+    textShadowColor: "rgba(234,184,67,0.18)",
+    textShadowRadius: 6,
+  },
+  headerSpacer: {
+    width: 44,
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 22,
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginTop: 8,
+  },
+  eyebrow: {
+    color: "#F0D28B",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 3.8,
+  },
+  eyebrowLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(233,185,73,0.43)",
+  },
+
+  headingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+    marginBottom: 17,
+  },
+  headingCopy: {
+    flex: 1,
+    paddingRight: 12,
+  },
   title: {
     color: "#FFFDFC",
     fontFamily: DP_SERIF,
-    fontSize: 36,
-    lineHeight: 40,
+    fontSize: 39,
+    lineHeight: 44,
     fontWeight: "700",
     letterSpacing: -0.9,
   },
-  subtitle: { color: "#8F8986", fontSize: 14, marginTop: 5 },
-  countBadge: {
-    minWidth: 48,
-    height: 48,
-    paddingHorizontal: 12,
-    borderRadius: 24,
-    backgroundColor: "rgba(120,0,18,0.28)",
-    borderWidth: 1,
-    borderColor: DP.colors.primary,
+  subtitle: {
+    color: "#8F8883",
+    fontSize: 14,
+    lineHeight: 19,
+    marginTop: 5,
+  },
+
+  countGlow: {
+    width: 57,
+    height: 57,
+    borderRadius: 29,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: DP.colors.primary,
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 5,
+    backgroundColor: "rgba(141,0,20,0.07)",
+    shadowColor: "#F01436",
+    shadowOpacity: 0.74,
+    shadowRadius: 18,
+    elevation: 8,
   },
-  countText: { color: DP.colors.primary, fontFamily: DP_SERIF, fontSize: 18, fontWeight: "800" },
-  searchWrap: {
-    height: 62,
-    borderRadius: 17,
-    backgroundColor: "rgba(7,6,5,0.92)",
+  countBadge: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(233,185,73,0.65)",
+    borderColor: "#9F1328",
+    backgroundColor: "rgba(86,0,13,0.40)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countText: {
+    color: "#F52D47",
+    fontFamily: DP_SERIF,
+    fontSize: 20,
+    fontWeight: "700",
+  },
+
+  searchWrap: {
+    height: 61,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "rgba(235,191,91,0.68)",
+    backgroundColor: "rgba(8,7,6,0.95)",
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 17,
     marginBottom: 20,
   },
-  searchIcon: { color: "#F2CD70", fontSize: 24, marginRight: 10 },
-  search: { flex: 1, color: "#fff", fontSize: 14 },
-  list: { paddingBottom: 112 },
+  searchSymbol: {
+    width: 25,
+    height: 25,
+    marginRight: 11,
+  },
+  search: {
+    flex: 1,
+    color: "#FFF",
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 110,
+    gap: 12,
+  },
+  loadingText: {
+    color: "#948D88",
+    fontSize: 12,
+  },
+
+  list: {
+    paddingBottom: 125,
+  },
+  listEmpty: {
+    flexGrow: 1,
+  },
+
   card: {
-    minHeight: 202,
-    flexDirection: "row",
+    minHeight: 200,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(233,185,73,0.55)",
-    backgroundColor: "rgba(8,7,6,0.94)",
+    borderColor: "rgba(213,163,68,0.62)",
+    backgroundColor: "rgba(7,6,5,0.93)",
+    flexDirection: "row",
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 13,
     overflow: "hidden",
-  },
-  photo: { width: 137, height: 176, borderRadius: 14, backgroundColor: "#161616" },
-  photoFallback: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(233,185,73,0.5)",
-    backgroundColor: "#120C07",
-  },
-  fallbackText: { color: "#F3C963", fontFamily: DP_SERIF, fontSize: 45, fontWeight: "800" },
-  info: { flex: 1, paddingLeft: 14, justifyContent: "center" },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  name: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 23, fontWeight: "700", maxWidth: "88%" },
-  verified: { color: DP.colors.primary, fontSize: 10 },
-  location: { color: "#8F8986", fontSize: 13, marginTop: 4 },
-  actions: { gap: 9, marginTop: 18 },
-  chatBtn: {
-    height: 48,
-    borderRadius: 13,
-    backgroundColor: "#A8061C",
-    borderWidth: 1,
-    borderColor: "#FF3150",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: DP.colors.primary,
-    shadowOpacity: 0.3,
+    shadowColor: "#7B260E",
+    shadowOpacity: 0.12,
     shadowRadius: 9,
+    elevation: 3,
+  },
+  photoShell: {
+    width: 139,
+    minHeight: 175,
+    borderRadius: 15,
+    overflow: "hidden",
+    backgroundColor: "#111",
+  },
+  photo: {
+    width: "100%",
+    height: "100%",
+    minHeight: 175,
+  },
+  photoFallback: {
+    flex: 1,
+    minHeight: 175,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(231,176,75,0.75)",
+    borderRadius: 15,
+    backgroundColor: "#14100C",
+    shadowColor: "#B90C25",
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
     elevation: 5,
   },
-  chatBtnText: { color: "#FFF", fontFamily: DP_SERIF, fontSize: 15, fontWeight: "800" },
-  profileBtn: {
+  fallbackInitial: {
+    color: "#F2BD4F",
+    fontFamily: DP_SERIF,
+    fontSize: 54,
+    fontWeight: "700",
+  },
+
+  cardInfo: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: 14,
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
+  nameRow: {
+    minHeight: 34,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  name: {
+    flexShrink: 1,
+    color: "#FFF",
+    fontFamily: DP_SERIF,
+    fontSize: 23,
+    lineHeight: 28,
+    fontWeight: "700",
+  },
+  verified: {
+    width: 18,
+    height: 18,
+  },
+  location: {
+    color: "#8F8985",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 1,
+  },
+
+  actions: {
+    marginTop: "auto",
+    gap: 9,
+  },
+  chatButton: {
+    height: 48,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#FF3150",
+    backgroundColor: "#A8071C",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#F01436",
+    shadowOpacity: 0.46,
+    shadowRadius: 11,
+    elevation: 6,
+  },
+  chatButtonText: {
+    color: "#FFF9F3",
+    fontFamily: DP_SERIF,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  profileButton: {
     height: 45,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: "#EDBD4D",
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: "#EAC153",
     backgroundColor: "rgba(0,0,0,0.34)",
-  },
-  profileBtnText: { color: "#F0CE77", fontFamily: DP_SERIF, fontSize: 14, fontWeight: "800" },
-  empty: { alignItems: "center", paddingVertical: 78, paddingHorizontal: 28 },
-  emptyHeart: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 1,
-    borderColor: DP.colors.gold,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(233,185,73,0.06)",
   },
-  emptyHeartText: { color: DP.colors.gold, fontSize: 50 },
-  emptyTitle: { color: "#fff", fontFamily: DP_SERIF, fontSize: 24, fontWeight: "700", marginTop: 20 },
-  emptyText: { color: "#8F8986", fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 7 },
-  pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
+  profileButtonText: {
+    color: "#F0D182",
+    fontFamily: DP_SERIF,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  buttonDisabled: {
+    opacity: 0.45,
+  },
+  buttonPressed: {
+    opacity: 0.76,
+    transform: [{ scale: 0.985 }],
+  },
+
+  emptyState: {
+    flex: 1,
+    minHeight: 350,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    paddingBottom: 50,
+  },
+  emptyHeart: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    borderWidth: 1,
+    borderColor: "rgba(234,193,83,0.63)",
+    backgroundColor: "rgba(81,0,12,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#E51D32",
+    shadowOpacity: 0.34,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  emptyHeartIcon: {
+    width: 38,
+    height: 38,
+  },
+  emptyTitle: {
+    color: "#FFF",
+    fontFamily: DP_SERIF,
+    fontSize: 23,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 19,
+  },
+  emptyText: {
+    color: "#918A85",
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
+    marginTop: 8,
+  },
+
+  bottomNav: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(2,2,2,0.995)",
+    zIndex: 80,
+  },
+  bottomTopLine: {
+    height: 1,
+    backgroundColor: "rgba(217,169,54,0.50)",
+  },
+  bottomItems: {
+    height: 86,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  bottomItem: {
+    flex: 1,
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  activeLine: {
+    position: "absolute",
+    top: 0,
+    width: 34,
+    height: 3,
+    borderRadius: 99,
+    backgroundColor: "#F21F3B",
+    shadowColor: "#F21F3B",
+    shadowOpacity: 0.95,
+    shadowRadius: 9,
+    elevation: 8,
+  },
+  bottomIcon: {
+    width: 30,
+    height: 30,
+  },
+  bottomLabel: {
+    color: "#D3CBC5",
+    fontSize: 9,
+    lineHeight: 13,
+    fontWeight: "500",
+    marginTop: 4,
+  },
+  bottomLabelActive: {
+    color: "#F21F3B",
+    fontWeight: "800",
+  },
+  bottomPressed: {
+    opacity: 0.66,
+    transform: [{ scale: 0.96 }],
+  },
+
+  pressed: {
+    opacity: 0.72,
+  },
 });
