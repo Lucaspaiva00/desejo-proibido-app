@@ -22,27 +22,27 @@ const BOTTOM_ITEMS = [
   {
     label: "Descobrir",
     route: "/feed",
-    symbol: { ios: "safari.fill", android: "explore", web: "explore" },
+    symbol: { ios: "safari", android: "explore", web: "explore" },
   },
   {
     label: "Matches",
     route: "/matches",
-    symbol: { ios: "heart.fill", android: "favorite", web: "favorite" },
+    symbol: { ios: "heart", android: "favorite_border", web: "favorite_border" },
   },
   {
     label: "Conversas",
     route: "/conversas",
-    symbol: { ios: "bubble.left.and.bubble.right.fill", android: "forum", web: "forum" },
+    symbol: { ios: "bubble.left", android: "chat_bubble_outline", web: "chat_bubble_outline" },
   },
   {
     label: "Carteira",
     route: "/carteira",
-    symbol: { ios: "wallet.bifold.fill", android: "account_balance_wallet", web: "account_balance_wallet" },
+    symbol: { ios: "wallet.bifold", android: "wallet", web: "wallet" },
   },
   {
     label: "Perfil",
     route: "/perfil",
-    symbol: { ios: "person.crop.circle.fill", android: "account_circle", web: "account_circle" },
+    symbol: { ios: "person", android: "person_outline", web: "person_outline" },
   },
 ] as const;
 
@@ -254,12 +254,14 @@ export default function Carteira() {
               >
                 {active ? <View style={styles.activeLine} /> : null}
 
-                <SymbolView
-                  name={item.symbol as any}
-                  size={28}
-                  tintColor={active ? "#F11E3A" : "#E8DED3"}
-                  style={styles.bottomIcon}
-                />
+                <View style={styles.bottomIconStage}>
+                  <SymbolView
+                    name={item.symbol as any}
+                    size={active ? 33 : 31}
+                    tintColor={active ? "#F11E3A" : "#EADFCF"}
+                    style={styles.bottomIcon}
+                  />
+                </View>
 
                 <Text
                   style={[
@@ -707,40 +709,47 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(217,169,54,0.50)",
   },
   bottomItems: {
-    height: 86,
+    height: 94,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
   },
   bottomItem: {
     flex: 1,
-    height: 80,
+    height: 88,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    paddingTop: 5,
   },
   activeLine: {
     position: "absolute",
     top: 0,
-    width: 34,
+    width: 38,
     height: 3,
     borderRadius: 99,
     backgroundColor: "#F21F3B",
     shadowColor: "#F21F3B",
-    shadowOpacity: 0.95,
-    shadowRadius: 9,
+    shadowOpacity: 1,
+    shadowRadius: 10,
     elevation: 8,
   },
+  bottomIconStage: {
+    width: 44,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   bottomIcon: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 34,
   },
   bottomLabel: {
-    color: "#D3CBC5",
-    fontSize: 9,
-    lineHeight: 13,
+    color: "#D8D0C8",
+    fontSize: 10.5,
+    lineHeight: 14,
     fontWeight: "500",
-    marginTop: 4,
+    marginTop: 2,
   },
   bottomLabelActive: {
     color: "#F21F3B",
