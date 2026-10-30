@@ -228,7 +228,7 @@ export default function Carteira() {
           />
 
           <QuickCard
-            icon={{ ios: "tshirt.fill", android: "checkroom", web: "checkroom" }}
+            icon={{ ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" }}
             title="Área da Criadora"
             subtitle="Ganhos e saques"
             onPress={() => router.push("/criadora")}
@@ -311,12 +311,7 @@ function QuickCard({
       <Text style={styles.quickTitle}>{title}</Text>
       <Text style={styles.quickSubtitle}>{subtitle}</Text>
 
-      <SymbolView
-        name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" } as any}
-        size={21}
-        tintColor="#F0C968"
-        style={styles.quickArrow}
-      />
+
     </Pressable>
   );
 }
@@ -688,14 +683,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginTop: 3,
   },
-  quickArrow: {
-    position: "absolute",
-    right: 13,
-    bottom: 17,
-    width: 22,
-    height: 22,
-  },
-
   bottomNav: {
     position: "absolute",
     left: 0,
