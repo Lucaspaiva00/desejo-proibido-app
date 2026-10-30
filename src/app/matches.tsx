@@ -85,7 +85,7 @@ function calcularIdade(nascimento?: string | Date) {
   return idade;
 }
 
-function localizacao(perfil: MatchItem["outro"] extends infer T ? any : never) {
+function localizacao(perfil: MatchItem["outro"] extends { perfil?: infer P } ? P : any) {
   const cidade = perfil?.cidade?.trim();
   const estado = perfil?.estado?.trim();
 
