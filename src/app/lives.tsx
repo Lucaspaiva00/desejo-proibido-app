@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, Eyebrow, GoldButton, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, Eyebrow, GoldButton, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP, dpNumber } from "../constants/dp-theme";
 import { apiErrorMessage } from "../services/http";
 import { getRealtimeSocket } from "../services/liveSocket";
@@ -75,7 +75,7 @@ export default function LivesScreen() {
 
   return (
     <LuxuryScreen>
-      <LuxuryHeader />
+      <AppHeader />
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
