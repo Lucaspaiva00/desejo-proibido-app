@@ -15,38 +15,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DPBottomNav } from "../components/ui/dp-bottom-nav";
 import { DP_SERIF, LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP, dpNumber } from "../constants/dp-theme";
 import { api } from "../services/api";
 import { obterToken } from "../storage/auth";
-
-const BOTTOM_ITEMS = [
-  {
-    label: "Descobrir",
-    route: "/feed",
-    symbol: { ios: "safari", android: "explore", web: "explore" },
-  },
-  {
-    label: "Matches",
-    route: "/matches",
-    symbol: { ios: "heart", android: "favorite_border", web: "favorite_border" },
-  },
-  {
-    label: "Conversas",
-    route: "/conversas",
-    symbol: { ios: "bubble.left", android: "chat_bubble_outline", web: "chat_bubble_outline" },
-  },
-  {
-    label: "Carteira",
-    route: "/carteira",
-    symbol: { ios: "wallet.bifold", android: "wallet", web: "wallet" },
-  },
-  {
-    label: "Perfil",
-    route: "/perfil",
-    symbol: { ios: "person", android: "person_outline", web: "person_outline" },
-  },
-] as const;
 
 export default function Perfil() {
   const navigation = useNavigation<any>();
@@ -450,46 +423,7 @@ export default function Perfil() {
         </View>
       </ScrollView>
 
-      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <View style={styles.bottomTopLine} />
-
-        <View style={styles.bottomItems}>
-          {BOTTOM_ITEMS.map((item) => {
-            const active = item.route === "/perfil";
-
-            return (
-              <Pressable
-                key={item.route}
-                onPress={() => router.replace(item.route)}
-                style={({ pressed }) => [
-                  styles.bottomItem,
-                  pressed && styles.bottomPressed,
-                ]}
-              >
-                {active ? <View style={styles.activeLine} /> : null}
-
-                <View style={styles.bottomIconStage}>
-                  <SymbolView
-                    name={item.symbol as any}
-                    size={active ? 33 : 31}
-                    tintColor={active ? "#F11E3A" : "#EADFCF"}
-                    style={styles.bottomIcon}
-                  />
-                </View>
-
-                <Text
-                  style={[
-                    styles.bottomLabel,
-                    active && styles.bottomLabelActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
+      <DPBottomNav />
     </LuxuryScreen>
   );
 }
@@ -984,69 +918,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  bottomNav: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(2,2,2,0.995)",
-    zIndex: 80,
-  },
-  bottomTopLine: {
-    height: 1,
-    backgroundColor: "rgba(217,169,54,0.50)",
-  },
-  bottomItems: {
-    height: 94,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-  },
-  bottomItem: {
-    flex: 1,
-    height: 88,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    paddingTop: 5,
-  },
-  activeLine: {
-    position: "absolute",
-    top: 0,
-    width: 38,
-    height: 3,
-    borderRadius: 99,
-    backgroundColor: "#F21F3B",
-    shadowColor: "#F21F3B",
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  bottomIconStage: {
-    width: 44,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bottomIcon: {
-    width: 34,
-    height: 34,
-  },
-  bottomLabel: {
-    color: "#D8D0C8",
-    fontSize: 10.5,
-    lineHeight: 14,
-    fontWeight: "500",
-    marginTop: 2,
-  },
-  bottomLabelActive: {
-    color: "#F21F3B",
-    fontWeight: "800",
-  },
-  bottomPressed: {
-    opacity: 0.66,
-    transform: [{ scale: 0.96 }],
-  },
 
   pressed: {
     opacity: 0.72,
