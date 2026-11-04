@@ -168,3 +168,22 @@ export async function editarMensagem(
 
     return data;
 }
+
+export async function desbloquearMidia(mensagemId: string) {
+    const headers = await authHeader();
+    const { data } = await api.post(
+        `/mensagens/${mensagemId}/desbloquear`,
+        {},
+        { headers }
+    );
+    return data;
+}
+
+export async function obterMidia(mensagemId: string) {
+    const headers = await authHeader();
+    const { data } = await api.get(
+        `/mensagens/${mensagemId}/midia`,
+        { headers }
+    );
+    return data;
+}
