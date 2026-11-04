@@ -84,6 +84,37 @@ export function LuxuryHeader({
   );
 }
 
+export function AppHeader() {
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+
+  function openMenu() {
+    if (navigation?.openDrawer) navigation.openDrawer();
+    else navigation?.getParent?.()?.openDrawer?.();
+  }
+
+  return (
+    <View style={[styles.appHeader, { paddingTop: Math.max(insets.top, 8) }]}>
+      <Pressable
+        onPress={openMenu}
+        hitSlop={12}
+        style={({ pressed }) => [styles.appMenuButton, pressed && styles.pressed]}
+      >
+        <View style={styles.appMenuLine} />
+        <View style={styles.appMenuLine} />
+        <View style={styles.appMenuLine} />
+      </Pressable>
+
+      <View style={styles.appBrand}>
+        <LockHeart size={48} />
+        <Text style={styles.appBrandText}>Desejo Proibido</Text>
+      </View>
+
+      <View style={styles.appHeaderSpacer} />
+    </View>
+  );
+}
+
 export function LuxuryScreen({ children, style }: { children: ReactNode; style?: ViewStyle | ViewStyle[] }) {
   return (
     <View style={[styles.screen, style]}>
@@ -250,6 +281,45 @@ const styles = StyleSheet.create({
   },
   headerSide: { width: 44, alignItems: "flex-start", justifyContent: "center" },
   headerRight: { alignItems: "flex-end" },
+  appHeader: {
+    minHeight: 86,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 20,
+  },
+  appMenuButton: {
+    width: 44,
+    height: 44,
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 5,
+  },
+  appMenuLine: {
+    width: 28,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#F2D071",
+  },
+  appBrand: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginRight: 4,
+  },
+  appBrandText: {
+    color: "#F4D07A",
+    fontFamily: DP_SERIF,
+    fontSize: 28,
+    lineHeight: 33,
+    fontWeight: "700",
+  },
+  appHeaderSpacer: {
+    width: 44,
+  },
   menuButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
   menuGlyph: { color: DP.colors.goldBright, fontSize: 28, lineHeight: 30, fontWeight: "300" },
   pressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
