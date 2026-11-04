@@ -1,5 +1,5 @@
 import { SymbolView } from "expo-symbols";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -12,9 +12,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { buscarMatches } from "../services/matches";
 
@@ -69,9 +68,6 @@ function localizacao(perfil: MatchItem["outro"] extends { perfil?: infer P } ? P
 }
 
 export default function Matches() {
-  const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-
   const [matches, setMatches] = useState<MatchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
@@ -113,11 +109,6 @@ export default function Matches() {
     });
   }, [matches, busca]);
 
-  function abrirMenu() {
-    if (navigation?.openDrawer) navigation.openDrawer();
-    else navigation?.getParent?.()?.openDrawer?.();
-  }
-
   function abrirConversa(item: MatchItem) {
     if (!item.conversaId) return;
     router.push(`/chat?conversaId=${item.conversaId}`);
@@ -132,24 +123,7 @@ export default function Matches() {
     <LuxuryScreen style={styles.screen}>
       <StatusBar style="light" />
 
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
-        <Pressable
-          onPress={abrirMenu}
-          hitSlop={12}
-          style={({ pressed }) => [styles.menuButton, pressed && styles.pressed]}
-        >
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-        </Pressable>
-
-        <View style={styles.brand}>
-          <LockHeart size={54} />
-          <Text style={styles.brandText}>Desejo Proibido</Text>
-        </View>
-
-        <View style={styles.headerSpacer} />
-      </View>
+      <AppHeader />
 
       <View style={styles.content}>
         <View style={styles.eyebrowRow}>
