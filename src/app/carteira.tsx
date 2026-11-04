@@ -1,5 +1,5 @@
 import { SymbolView } from "expo-symbols";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -11,18 +11,14 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP, dpNumber } from "../constants/dp-theme";
 import { obterCarteira } from "../services/carteira";
 import { getRealtimeSocket } from "../services/liveSocket";
 import { statusLives } from "../services/lives";
 
 export default function Carteira() {
-  const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saldo, setSaldo] = useState(0);
@@ -66,11 +62,6 @@ export default function Carteira() {
     return () => socket?.off("wallet:update", walletUpdate);
   }, [carregar]);
 
-  function abrirMenu() {
-    if (navigation?.openDrawer) navigation.openDrawer();
-    else navigation?.getParent?.()?.openDrawer?.();
-  }
-
   if (loading) {
     return (
       <LuxuryScreen style={styles.screen}>
@@ -88,24 +79,7 @@ export default function Carteira() {
     <LuxuryScreen style={styles.screen}>
       <StatusBar style="light" />
 
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
-        <Pressable
-          onPress={abrirMenu}
-          hitSlop={12}
-          style={({ pressed }) => [styles.menuButton, pressed && styles.pressed]}
-        >
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-        </Pressable>
-
-        <View style={styles.brand}>
-          <LockHeart size={54} />
-          <Text style={styles.brandText}>Desejo Proibido</Text>
-        </View>
-
-        <View style={styles.headerSpacer} />
-      </View>
+      <AppHeader />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
