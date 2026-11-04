@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, Eyebrow, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { criarCheckout, listarPacotes } from "../services/pagamentos";
 
@@ -58,7 +58,7 @@ export default function Creditos() {
 
   return (
     <LuxuryScreen>
-      <LuxuryHeader />
+      <AppHeader />
       <View style={styles.content}>
         <Eyebrow>CRÉDITOS</Eyebrow>
         <Text style={styles.title}>Escolha seu pacote</Text>
