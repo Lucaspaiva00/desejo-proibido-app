@@ -13,9 +13,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, LockHeart, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { api } from "../services/api";
 import {
@@ -142,7 +141,6 @@ function defaultFiltersForProfile(perfil: any): FeedFilterState {
 
 export default function Feed() {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
   const { preview } = useLocalSearchParams<{ preview?: string }>();
   const previewAtivo = String(preview || "") === "1";
 
@@ -150,7 +148,6 @@ export default function Feed() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [indice, setIndice] = useState(0);
   const [saldo, setSaldo] = useState(0);
-  const [vip, setVip] = useState(false);
   const [meuPerfil, setMeuPerfil] = useState<any>(null);
   const [fotoCount, setFotoCount] = useState(1);
   const [modo, setModo] = useState<"Descobrir" | "Online" | "Perto de você" | "Novos">("Descobrir");
@@ -201,7 +198,6 @@ export default function Feed() {
     if (previewAtivo) {
       const perfilPreview = { cidade: "Salvador", estado: "BA", genero: "MASCULINO" };
       setSaldo(250);
-      setVip(true);
       setMeuPerfil(perfilPreview);
       return perfilPreview;
     }
@@ -213,7 +209,6 @@ export default function Feed() {
         api.get("/perfil/me", { headers }),
       ]);
       setSaldo(Number(usuarioRes.data?.saldoCreditos || 0));
-      setVip(!!(usuarioRes.data?.premiumAtivo || usuarioRes.data?.isPremium));
       const perfil = perfilRes.data || null;
       setMeuPerfil(perfil);
       return perfil;
@@ -480,6 +475,14 @@ export default function Feed() {
     await carregar(next, meuPerfil, "Descobrir");
   }
 
+  async function buscarNovamente() {
+    const next = defaultFiltersForProfile(meuPerfil);
+    setFiltros(next);
+    setFiltrosDraft(next);
+    setModo("Descobrir");
+    await carregar(next, meuPerfil, "Descobrir");
+  }
+
   function abrirMaisAcoes() {
     if (previewAtivo) {
       Alert.alert("Mais ações", "Prévia visual do feed.");
@@ -505,26 +508,6 @@ export default function Feed() {
     return count;
   }, [filtros, meuPerfil]);
 
-  const localLabel = meuPerfil?.cidade && meuPerfil?.estado
-    ? `${meuPerfil.cidade}, ${meuPerfil.estado}`
-    : "Sua região";
-
-  const generoLabel = filtros.genero === "FEMININO"
-    ? "Mulheres"
-    : filtros.genero === "MASCULINO"
-      ? "Homens"
-      : "Todos";
-
-  const idadeLabel = filtros.idadeMax === 99
-    ? "18+ anos"
-    : `${filtros.idadeMin}–${filtros.idadeMax} anos`;
-
-  const localFiltroLabel = filtros.local === "cidade"
-    ? localLabel
-    : filtros.local === "estado"
-      ? meuPerfil?.estado || "Seu estado"
-      : "Qualquer lugar";
-
   const cardOnline = !!usuario && (previewAtivo || onlineIds.has(String(usuario.id)));
 
   if (loading) {
@@ -544,101 +527,7 @@ export default function Feed() {
     <LuxuryScreen style={styles.screen}>
       <StatusBar style="light" />
 
-      <View style={[styles.topArea, { paddingTop: Math.max(insets.top, 8) }]}>
-        <View style={styles.brandRow}>
-          <Pressable style={styles.vipPill} onPress={() => navigation.openDrawer?.()}>
-            <Icon name={ICONS.vip} size={19} color="#E9B949" />
-            <Text style={styles.vipPillText}>VIP</Text>
-          </Pressable>
-
-          <Pressable style={styles.brand} onPress={() => navigation.openDrawer?.()}>
-            <LockHeart size={50} />
-            <View style={styles.brandTextWrap}>
-              <View style={styles.brandTitleRow}>
-                <Text style={styles.brandGold}>DESEJO</Text>
-                <Text style={styles.brandRed}> PROIBIDO</Text>
-              </View>
-              <Text style={styles.brandTagline}>CONEXÕES QUE VÃO ALÉM</Text>
-            </View>
-          </Pressable>
-
-          <View style={styles.topActions}>
-            <View style={styles.creditPill}>
-              <Icon name={ICONS.coin} size={18} color="#E9B949" />
-              <Text style={styles.creditValue}>{saldo.toLocaleString("pt-BR")}</Text>
-              <View style={styles.plus}>
-                <Icon name={ICONS.plus} size={20} color="#FFF" />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeRow}>
-          {[
-            { label: "Descobrir" as const, icon: ICONS.discover },
-            { label: "Online" as const, icon: ICONS.online },
-            { label: "Perto de você" as const, icon: ICONS.nearby },
-            { label: "Novos" as const, icon: ICONS.new },
-          ].map((item) => {
-            const active = modo === item.label;
-            return (
-              <Pressable
-                key={item.label}
-                onPress={() => mudarModo(item.label)}
-                style={({ pressed }) => [
-                  styles.modeChip,
-                  active && styles.modeChipActive,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Icon
-                  name={item.icon}
-                  size={18}
-                  color={item.label === "Online" ? "#23DE63" : active ? "#FFF4D3" : "#E9B949"}
-                />
-                <Text style={[styles.modeText, active && styles.modeTextActive]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-
-          <Pressable
-            onPress={abrirFiltros}
-            style={({ pressed }) => [
-              styles.modeChip,
-              filtroCount > 0 && styles.modeChipFiltered,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Icon name={ICONS.filters} size={18} color="#E9B949" />
-            <Text style={styles.modeText}>Filtros{filtroCount ? ` (${filtroCount})` : ""}</Text>
-          </Pressable>
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <Pressable style={styles.filterChip} onPress={abrirFiltros}>
-            <Icon name={ICONS.all} size={17} color="#E9B949" />
-            <Text style={styles.filterText}>Todos</Text>
-          </Pressable>
-
-          <Pressable style={[styles.filterChip, filtros.local !== "qualquer" && styles.filterChipActive]} onPress={abrirFiltros}>
-            <Icon name={ICONS.nearby} size={17} color="#E9B949" />
-            <Text style={styles.filterText}>{localFiltroLabel}</Text>
-            <Icon name={ICONS.chevron} size={14} color="#9F7A35" />
-          </Pressable>
-
-          <Pressable style={[styles.filterChip, filtros.genero !== "Qualquer" && styles.filterChipActive]} onPress={abrirFiltros}>
-            <Icon name={ICONS.gender} size={17} color="#E34A85" />
-            <Text style={styles.filterText}>{generoLabel}</Text>
-            <Icon name={ICONS.chevron} size={14} color="#9F7A35" />
-          </Pressable>
-
-          <Pressable style={styles.filterChip} onPress={abrirFiltros}>
-            <Icon name={ICONS.age} size={17} color="#E9B949" />
-            <Text style={styles.filterText}>{idadeLabel}</Text>
-            <Icon name={ICONS.chevron} size={14} color="#9F7A35" />
-          </Pressable>
-        </ScrollView>
-      </View>
+      <AppHeader />
 
       {!usuario ? (
         <View style={styles.emptyWrap}>
@@ -652,7 +541,7 @@ export default function Feed() {
               ? "Assim que alguém ficar online, aparecerá aqui para você."
               : "Ajuste seus filtros ou atualize para descobrir novas conexões."}
           </Text>
-          <Pressable style={styles.emptyButton} onPress={() => carregar(filtros, meuPerfil, modo)}>
+          <Pressable style={styles.emptyButton} onPress={buscarNovamente}>
             <Text style={styles.emptyButtonText}>Buscar novamente</Text>
             <Icon name={ICONS.chevron} size={24} color="#F1C95F" style={styles.emptyArrowIcon} />
           </Pressable>
@@ -694,6 +583,14 @@ export default function Feed() {
             ) : null}
 
             <View style={styles.cardMenuArea}>
+              <Pressable onPress={abrirFiltros} style={styles.cardFilterButton}>
+                <Icon name={ICONS.filters} size={20} color="#E9B949" />
+                {filtroCount > 0 ? (
+                  <View style={styles.cardFilterBadge}>
+                    <Text style={styles.cardFilterBadgeText}>{filtroCount}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
               <View style={styles.photoCount}>
                 <Icon name={ICONS.photo} size={15} color="#FFF" />
                 <Text style={styles.photoCountText}>{previewAtivo ? 12 : fotoCount}</Text>
@@ -786,6 +683,23 @@ export default function Feed() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+              <Text style={styles.filterGroupLabel}>MODO</Text>
+              <View style={styles.optionRow}>
+                {(["Descobrir", "Online", "Perto de você", "Novos"] as const).map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => {
+                      setFiltrosAbertos(false);
+                      mudarModo(item);
+                    }}
+                    style={[styles.optionChip, modo === item && styles.optionChipActive]}
+                  >
+                    <Text style={[styles.optionChipText, modo === item && styles.optionChipTextActive]}>
+                      {item}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
               <Text style={styles.filterGroupLabel}>LOCALIZAÇÃO</Text>
               <View style={styles.optionRow}>
                 {[
@@ -1037,6 +951,16 @@ const styles = StyleSheet.create({
   greenDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22E760" },
   onlineBadgeText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
   cardMenuArea: { position: "absolute", top: 12, right: 10, flexDirection: "row", alignItems: "center", gap: 4 },
+  cardFilterButton: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.74)",
+    borderWidth: 1, borderColor: "rgba(221,176,89,0.42)", alignItems: "center", justifyContent: "center",
+  },
+  cardFilterBadge: {
+    position: "absolute", right: -3, top: -4, minWidth: 17, height: 17, borderRadius: 9,
+    backgroundColor: "#A9071C", borderWidth: 1, borderColor: "#E9B949",
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
+  },
+  cardFilterBadgeText: { color: "#FFF", fontSize: 8, fontWeight: "900" },
   photoCount: {
     height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.74)",
     paddingHorizontal: 10, alignItems: "center", justifyContent: "center",
