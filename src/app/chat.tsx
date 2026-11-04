@@ -449,11 +449,8 @@ export default function Chat() {
     );
   }
 
-  function videoIndisponivel() {
-    Alert.alert(
-      "Videochamada",
-      "A interface de videochamada será conectada ao backend na próxima etapa. Nenhuma cobrança foi iniciada."
-    );
+  function abrirVideochamada() {
+    router.push(`/videochamada?conversaId=${conversaIdParam}`);
   }
 
   const avatar = fotoConversa();
@@ -575,7 +572,7 @@ export default function Chat() {
           </Pressable>
 
           <Pressable
-            onPress={videoIndisponivel}
+            onPress={abrirVideochamada}
             style={({ pressed }) => [
               styles.headerRound,
               styles.headerRoundVideo,
@@ -857,7 +854,7 @@ export default function Chat() {
             label="Vídeo"
             color="#9A6A00"
             icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
-            onPress={videoIndisponivel}
+            onPress={abrirVideochamada}
           />
           <Tool
             label="Presente"
