@@ -1,5 +1,4 @@
 import { SymbolView } from "expo-symbols";
-import { useNavigation } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -12,9 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, GoldButton, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, GoldButton, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import {
   CriadoraStatus,
@@ -41,9 +39,6 @@ function statusLabel(value: string) {
 }
 
 export default function CriadoraScreen() {
-  const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-
   const [status, setStatus] = useState<CriadoraStatus | null>(null);
   const [financeiro, setFinanceiro] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -173,11 +168,6 @@ export default function CriadoraScreen() {
     );
   }
 
-  function abrirMenu() {
-    if (navigation?.openDrawer) navigation.openDrawer();
-    else navigation?.getParent?.()?.openDrawer?.();
-  }
-
   if (loading) {
     return (
       <LuxuryScreen style={styles.screen}>
@@ -194,7 +184,7 @@ export default function CriadoraScreen() {
     return (
       <LuxuryScreen style={styles.screen}>
         <StatusBar style="light" />
-        <CreatorHeader onMenu={abrirMenu} topInset={insets.top} />
+        <AppHeader />
         <View style={styles.errorState}>
           <View style={styles.errorStateIcon}>
             <Text style={styles.errorStateIconText}>!</Text>
@@ -245,7 +235,7 @@ export default function CriadoraScreen() {
   return (
     <LuxuryScreen style={styles.screen}>
       <StatusBar style="light" />
-      <CreatorHeader onMenu={abrirMenu} topInset={insets.top} />
+      <AppHeader />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -538,50 +528,6 @@ export default function CriadoraScreen() {
 
       <DPBottomNav />
     </LuxuryScreen>
-  );
-}
-
-function CreatorHeader({
-  onMenu,
-  topInset,
-}: {
-  onMenu: () => void;
-  topInset: number;
-}) {
-  return (
-    <View style={[styles.topBar, { paddingTop: Math.max(topInset, 8) }]}>
-      <Pressable
-        onPress={onMenu}
-        hitSlop={12}
-        style={({ pressed }) => [
-          styles.menuButton,
-          pressed && styles.pressed,
-        ]}
-      >
-        <View style={styles.menuLine} />
-        <View style={styles.menuLine} />
-        <View style={styles.menuLine} />
-      </Pressable>
-
-      <View style={styles.brand}>
-        <SymbolView
-          name={{ ios: "crown", android: "workspace_premium", web: "workspace_premium" } as any}
-          size={24}
-          tintColor="#EBCB79"
-          style={styles.brandCrown}
-        />
-
-        <View style={styles.brandCopy}>
-          <View style={styles.brandTitleRow}>
-            <Text style={styles.brandGold}>DESEJO</Text>
-            <Text style={styles.brandRed}> PROIBIDO</Text>
-          </View>
-          <Text style={styles.brandTagline}>LIBERTE O SEU LADO REAL</Text>
-        </View>
-      </View>
-
-      <View style={styles.headerSpacer} />
-    </View>
   );
 }
 
