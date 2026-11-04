@@ -5,39 +5,29 @@ import { DP } from "../../constants/dp-theme";
 
 const items = [
   {
-    label: "Início",
-    route: "/home",
-    symbol: { ios: "house.fill", android: "home", web: "home" },
-  },
-  {
     label: "Descobrir",
     route: "/feed",
-    symbol: { ios: "safari.fill", android: "explore", web: "explore" },
+    symbol: { ios: "safari", android: "explore", web: "explore" },
   },
   {
-    label: "Lives",
-    route: "/lives",
-    symbol: { ios: "dot.radiowaves.left.and.right", android: "sensors", web: "sensors" },
+    label: "Matches",
+    route: "/matches",
+    symbol: { ios: "heart", android: "favorite_border", web: "favorite_border" },
   },
   {
     label: "Conversas",
     route: "/conversas",
-    symbol: { ios: "bubble.left.and.bubble.right.fill", android: "forum", web: "forum" },
-  },
-  {
-    label: "VIP",
-    route: "/creditos",
-    symbol: { ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" },
+    symbol: { ios: "bubble.left", android: "chat_bubble_outline", web: "chat_bubble_outline" },
   },
   {
     label: "Carteira",
     route: "/carteira",
-    symbol: { ios: "wallet.bifold.fill", android: "account_balance_wallet", web: "account_balance_wallet" },
+    symbol: { ios: "wallet.bifold", android: "wallet", web: "wallet" },
   },
   {
     label: "Perfil",
     route: "/perfil",
-    symbol: { ios: "person.crop.circle.fill", android: "account_circle", web: "account_circle" },
+    symbol: { ios: "person", android: "person_outline", web: "person_outline" },
   },
 ] as const;
 
@@ -50,13 +40,9 @@ export function DPBottomNav() {
 
       <View style={styles.dock}>
         {items.map((item) => {
-          const active = pathname === item.route || pathname.startsWith(`${item.route}/`);
-          const vip = item.label === "VIP";
-          const iconColor = active
-            ? DP.colors.primary
-            : vip
-              ? "#E8B94A"
-              : "#D7D1CB";
+          const active =
+            pathname === item.route ||
+            pathname.startsWith(`${item.route}/`);
 
           return (
             <Pressable
@@ -66,23 +52,16 @@ export function DPBottomNav() {
               accessibilityLabel={item.label}
               style={({ pressed }) => [
                 styles.item,
-                active && styles.itemActive,
                 pressed && styles.pressed,
               ]}
             >
               {active ? <View style={styles.activeIndicator} /> : null}
 
-              <View
-                style={[
-                  styles.iconShell,
-                  active && styles.iconShellActive,
-                  vip && !active && styles.iconShellVip,
-                ]}
-              >
+              <View style={styles.iconStage}>
                 <SymbolView
                   name={item.symbol as any}
-                  size={active ? 27 : 25}
-                  tintColor={iconColor}
+                  size={active ? 34 : 32}
+                  tintColor={active ? DP.colors.primary : "#E9E0D8"}
                   style={styles.symbol}
                 />
               </View>
@@ -91,7 +70,6 @@ export function DPBottomNav() {
                 numberOfLines={1}
                 style={[
                   styles.label,
-                  vip && styles.vipLabel,
                   active && styles.labelActive,
                 ]}
               >
@@ -121,80 +99,54 @@ const styles = StyleSheet.create({
   },
 
   dock: {
-    height: 88,
+    height: 94,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(2,2,2,0.995)",
-    paddingHorizontal: 4,
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingHorizontal: 10,
   },
 
   item: {
     flex: 1,
     minWidth: 0,
-    height: 76,
+    height: 88,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-  },
-
-  itemActive: {
-    transform: [{ translateY: -1 }],
+    paddingTop: 5,
   },
 
   activeIndicator: {
     position: "absolute",
     top: 0,
-    width: 32,
+    width: 38,
     height: 3,
     borderRadius: 99,
     backgroundColor: DP.colors.primary,
     shadowColor: DP.colors.primary,
-    shadowOpacity: 0.95,
-    shadowRadius: 9,
+    shadowOpacity: 1,
+    shadowRadius: 10,
     elevation: 8,
   },
 
-  iconShell: {
-    width: 39,
-    height: 39,
-    borderRadius: 20,
+  iconStage: {
+    width: 46,
+    height: 41,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 2,
-  },
-
-  iconShellActive: {
-    backgroundColor: "rgba(227,27,45,0.09)",
-    borderWidth: 1,
-    borderColor: "rgba(227,27,45,0.22)",
-    shadowColor: DP.colors.primary,
-    shadowOpacity: 0.48,
-    shadowRadius: 9,
-    elevation: 6,
-  },
-
-  iconShellVip: {
-    backgroundColor: "rgba(232,185,74,0.035)",
   },
 
   symbol: {
-    width: 29,
-    height: 29,
+    width: 35,
+    height: 35,
   },
 
   label: {
-    color: "#BBB5B0",
-    fontSize: 9,
-    lineHeight: 12,
+    color: "#D8D0C8",
+    fontSize: 10.5,
+    lineHeight: 14,
     fontWeight: "500",
-    letterSpacing: 0.05,
-  },
-
-  vipLabel: {
-    color: "#E8B94A",
-    fontWeight: "700",
+    marginTop: 2,
   },
 
   labelActive: {
@@ -204,6 +156,6 @@ const styles = StyleSheet.create({
 
   pressed: {
     opacity: 0.64,
-    transform: [{ scale: 0.95 }],
+    transform: [{ scale: 0.96 }],
   },
 });
