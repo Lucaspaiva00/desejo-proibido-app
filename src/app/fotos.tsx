@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, Eyebrow, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { api } from "../services/api";
 import { obterToken } from "../storage/auth";
@@ -121,7 +121,7 @@ export default function Fotos() {
 
   return (
     <LuxuryScreen>
-      <LuxuryHeader />
+      <AppHeader />
       <View style={styles.content}>
         <View style={styles.headRow}>
           <View style={{ flex: 1 }}>
