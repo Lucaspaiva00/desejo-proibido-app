@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
-import { DP_SERIF, Eyebrow, LuxuryHeader, LuxuryScreen } from "../components/ui/dp-luxury";
+import { AppHeader, DP_SERIF, Eyebrow, LuxuryScreen } from "../components/ui/dp-luxury";
 import { DP } from "../constants/dp-theme";
 import { listarConversas } from "../services/chat";
 
@@ -71,13 +71,7 @@ export default function Conversas() {
 
   return (
     <LuxuryScreen>
-      <LuxuryHeader
-        action={
-          <Pressable style={styles.composeButton} onPress={() => router.push("/matches")}>
-            <Text style={styles.composeIcon}>＋</Text>
-          </Pressable>
-        }
-      />
+      <AppHeader />
 
       <View style={styles.content}>
         <Eyebrow>CONVERSAS</Eyebrow>
