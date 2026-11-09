@@ -28,7 +28,6 @@ import {
   presentearLive,
   rankingLive,
   sairLive,
-  tickLive,
   statusLives,
 } from "../../services/lives";
 
@@ -40,7 +39,6 @@ export default function AssistirLiveScreen() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [loading, setLoading] = useState(true);
   const [videoState, setVideoState] = useState("Conectando vídeo...");
-  const [saldoMinutos, setSaldoMinutos] = useState(0);
   const [saldoCreditos, setSaldoCreditos] = useState<number | null>(null);
   const [presentes, setPresentes] = useState<any[]>([]);
   const [chat, setChat] = useState<any[]>([]);
@@ -206,16 +204,12 @@ export default function AssistirLiveScreen() {
       setSaldoCreditos(Number(me?.saldoCreditos || 0));
       setPresentes(Array.isArray(gifts) ? gifts.filter((x: any) => x?.ativo !== false && Number(x?.custoCreditos || 0) > 0) : []);
 
-      const joined = await entrarLive(liveId);
+      await entrarLive(liveId);
       joinedRef.current = true;
-      setSaldoMinutos(Number(joined?.saldoMinutos || 0));
       await conectarSocket();
     } catch (e: any) {
-      const status = Number(e?.response?.status || 0);
-      const msg = apiErrorMessage(e, "Não foi possível entrar na live");
-      Alert.alert(status === 402 ? "Sem minutos" : "Live indisponível", msg, [
-        status === 402 ? { text: "Comprar créditos", onPress: () => router.replace("/creditos") } : { text: "Voltar", onPress: () => router.replace("/lives") },
-        ...(status === 402 ? [{ text: "Voltar", onPress: () => router.replace("/lives") }] : []),
+      Alert.alert("Live indisponível", apiErrorMessage(e, "Não foi possível entrar na live"), [
+        { text: "Voltar", onPress: () => router.replace("/lives") },
       ]);
     } finally {
       setLoading(false);
@@ -240,25 +234,7 @@ export default function AssistirLiveScreen() {
 
   useEffect(() => {
     carregar();
-    const interval = setInterval(async () => {
-      if (!joinedRef.current) return;
-      try {
-        const r = await tickLive(liveId);
-        if (r?.saldoMinutos != null) setSaldoMinutos(Number(r.saldoMinutos));
-      } catch (e: any) {
-        if (Number(e?.response?.status) === 402) {
-          await leave();
-          Alert.alert("Seus minutos acabaram", "Adquira um novo pacote para continuar assistindo.", [
-            { text: "Comprar", onPress: () => router.replace("/creditos") },
-          ]);
-        }
-      }
-    }, 15000);
-
-    return () => {
-      clearInterval(interval);
-      leave();
-    };
+    return () => { leave(); };
   }, [liveId]);
 
   async function enviarPresente(presente: any) {
@@ -345,7 +321,7 @@ export default function AssistirLiveScreen() {
         </View>
 
         <View style={styles.balances}>
-          <View style={styles.balance}><Text style={styles.balanceLabel}>Minutos</Text><Text style={styles.balanceValue}>{saldoMinutos}</Text></View>
+          <View style={styles.balance}><Text style={styles.balanceLabel}>Acesso</Text><Text style={styles.balanceValue}>Grátis</Text></View>
           <View style={styles.balance}><Text style={styles.balanceLabel}>Créditos</Text><Text style={styles.balanceValue}>{saldoCreditos == null ? "—" : saldoCreditos}</Text></View>
           <TouchableOpacity style={styles.buyBalance} onPress={() => router.push("/creditos")}><Text style={styles.buyBalanceText}>Comprar</Text></TouchableOpacity>
         </View>

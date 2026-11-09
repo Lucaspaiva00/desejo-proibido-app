@@ -139,7 +139,7 @@ export default function Matches() {
 
           <View style={styles.countGlow}>
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{matches.length}</Text>
+              <Text style={styles.countText}>{matchesFiltrados.length}</Text>
             </View>
           </View>
         </View>
@@ -170,6 +170,7 @@ export default function Matches() {
         ) : (
           <FlatList
             data={matchesFiltrados}
+            style={styles.matchList}
             keyExtractor={(item) => String(item.id)}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
@@ -447,6 +448,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
+  matchList: { flex: 1, minHeight: 0 },
   list: {
     paddingBottom: 125,
   },
@@ -455,7 +457,7 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    minHeight: 200,
+    alignItems: "center",
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(213,163,68,0.62)",
@@ -470,8 +472,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   photoShell: {
-    width: 139,
-    minHeight: 175,
+    width: "36%",
+    maxWidth: 144,
+    height: 152,
     borderRadius: 15,
     overflow: "hidden",
     backgroundColor: "#111",
@@ -479,11 +482,9 @@ const styles = StyleSheet.create({
   photo: {
     width: "100%",
     height: "100%",
-    minHeight: 175,
   },
   photoFallback: {
     flex: 1,
-    minHeight: 175,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -535,11 +536,11 @@ const styles = StyleSheet.create({
   },
 
   actions: {
-    marginTop: "auto",
-    gap: 9,
+    marginTop: 10,
+    gap: 7,
   },
   chatButton: {
-    height: 48,
+    height: 42,
     borderRadius: 13,
     borderWidth: 1,
     borderColor: "#FF3150",
@@ -558,7 +559,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   profileButton: {
-    height: 45,
+    height: 40,
     borderRadius: 13,
     borderWidth: 1,
     borderColor: "#EAC153",
