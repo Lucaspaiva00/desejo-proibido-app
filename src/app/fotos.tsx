@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   photoCardLarge: {
-    height: 360,
+    height: 240,
   },
   photoCardPrincipal: {
     borderWidth: 1.5,
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addCardLarge: {
-    height: 360,
+    height: 240,
   },
   addCircle: {
     width: 74,

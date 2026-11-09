@@ -157,7 +157,7 @@ export default function Carteira() {
 
           <View style={styles.minutesCopy}>
             <Text style={styles.minutesValue}>{dpNumber(minutos)}</Text>
-            <Text style={styles.minutesLabel}>minutos de live</Text>
+            <Text style={styles.minutesLabel}>minutos disponíveis</Text>
           </View>
         </View>
 

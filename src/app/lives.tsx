@@ -120,8 +120,8 @@ export default function LivesScreen() {
             {status?.podeAssistir ? (
               <View style={styles.balanceRow}>
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>MINUTOS</Text>
-                  <Text style={styles.statValue}>{dpNumber(status.minutosDisponiveis)}</Text>
+                  <Text style={styles.statLabel}>ACESSO</Text>
+                  <Text style={styles.statValue}>Grátis</Text>
                   <Text style={styles.statHelper}>Para assistir</Text>
                 </View>
                 <View style={[styles.stat, styles.statAccent]}>

@@ -21,6 +21,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.desejoproibido.app",
       "versionCode": 2
     },
@@ -43,11 +44,13 @@
       "expo-web-browser",
       "expo-notifications",
       "expo-dev-client",
+      ["expo-audio", { "microphonePermission": "Permitir a gravação de mensagens de áudio." }],
+      ["expo-location", { "locationWhenInUsePermission": "Permitir calcular distâncias aproximadas entre perfis." }],
       [
         "@config-plugins/react-native-webrtc",
         {
           "cameraPermission": "Permitir que o Desejo Proibido acesse sua câmera para lives e chamadas de vídeo.",
-          "microphonePermission": "Permitir que o Desejo Proibido acesse seu microfone para lives e chamadas de vídeo."
+          "microphonePermission": "Permitir que o Desejo Proibido acesse seu microfone para mensagens de áudio, lives e chamadas de vídeo."
         }
       ]
     ],

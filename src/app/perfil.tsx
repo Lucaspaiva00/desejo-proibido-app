@@ -1,7 +1,8 @@
+import * as Location from "expo-location";
 import { SymbolView } from "expo-symbols";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,10 +34,12 @@ export default function Perfil() {
   const [saldoCreditos, setSaldoCreditos] = useState(0);
   const [isInvisivel, setIsInvisivel] = useState(false);
   const [fotoPrincipal, setFotoPrincipal] = useState("");
+  const [localizacaoAtiva, setLocalizacaoAtiva] = useState(false);
+  const [alterandoLocalizacao, setAlterandoLocalizacao] = useState(false);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     carregar();
-  }, []);
+  }, []));
 
   async function authHeader() {
     const token = await obterToken();
@@ -47,10 +50,12 @@ export default function Perfil() {
     try {
       const headers = await authHeader();
 
-      const [perfilRes, premiumRes, usuarioRes] = await Promise.all([
+      const [perfilRes, premiumRes, usuarioRes, fotosRes, localizacaoRes] = await Promise.all([
         api.get("/perfil/me", { headers }),
         api.get("/premium/me", { headers }),
         api.get("/usuarios/me", { headers }),
+        api.get("/fotos/minhas", { headers }).catch(() => null),
+        api.get("/perfil/localizacao", { headers }).catch(() => null),
       ]);
 
       const perfil = perfilRes.data || {};
@@ -63,14 +68,16 @@ export default function Perfil() {
       setEstado(perfil?.estado || "");
       setGenero(perfil?.genero || "");
 
-      if (perfil?.nascimento) {
-        setNascimento(String(perfil.nascimento).substring(0, 10));
-      }
+      const dataSalva = String(perfil?.nascimento || "").slice(0, 10);
+      setNascimento(dataSalva.split("-").reverse().join("/"));
+      setLocalizacaoAtiva(!!localizacaoRes?.data?.ativa);
 
       setSaldoCreditos(Number(premium?.saldoCreditos || usuario?.saldoCreditos || 0));
       setIsPremium(!!(premium?.isPremium || usuario?.premiumAtivo));
       setIsInvisivel(!!usuario?.isInvisivel);
+      const fotos = Array.isArray(fotosRes?.data) ? fotosRes.data : [];
       setFotoPrincipal(
+        fotos.find((foto: { principal?: boolean }) => foto.principal)?.url ||
         usuario?.fotoPrincipal ||
         perfil?.fotoPrincipal ||
         ""
@@ -84,12 +91,16 @@ export default function Perfil() {
   }
 
   async function salvarPerfil() {
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(nascimento)) {
+      Alert.alert("Data inválida", "Informe o nascimento no formato DD/MM/AAAA.");
+      return;
+    }
     try {
       const headers = await authHeader();
 
       await api.put(
         "/perfil",
-        { nome, bio, cidade, estado, genero, nascimento },
+        { nome, bio, cidade, estado, genero, nascimento: nascimento.split("/").reverse().join("-") },
         { headers }
       );
 
@@ -100,6 +111,33 @@ export default function Perfil() {
         "Erro",
         error?.response?.data?.erro || "Erro ao salvar perfil"
       );
+    }
+  }
+
+  async function alterarLocalizacao(ativa: boolean) {
+    if (alterandoLocalizacao) return;
+    setAlterandoLocalizacao(true);
+    try {
+      const headers = await authHeader();
+      if (ativa) {
+        const permissao = await Location.requestForegroundPermissionsAsync();
+        if (!permissao.granted) {
+          Alert.alert("Permissão necessária", "Permita a localização para calcular distâncias.");
+          return;
+        }
+        const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        await api.put("/perfil/localizacao", {
+          latitude: Math.round(coords.latitude * 10) / 10,
+          longitude: Math.round(coords.longitude * 10) / 10,
+        }, { headers });
+      } else {
+        await api.delete("/perfil/localizacao", { headers });
+      }
+      setLocalizacaoAtiva(ativa);
+    } catch {
+      Alert.alert("Localização indisponível", "Não foi possível atualizar sua localização.");
+    } finally {
+      setAlterandoLocalizacao(false);
     }
   }
 
@@ -160,7 +198,12 @@ export default function Perfil() {
         </View>
 
         <View style={styles.profileHero}>
-          <View style={styles.avatarGlow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Alterar foto de perfil"
+            onPress={() => router.push("/fotos")}
+            style={styles.avatarGlow}
+          >
             <View style={styles.avatarGoldRing}>
               {fotoPrincipal ? (
                 <Image
@@ -176,7 +219,7 @@ export default function Perfil() {
                 </View>
               )}
             </View>
-          </View>
+          </Pressable>
 
           <Text style={styles.name}>{nome || "Seu perfil"}</Text>
 
@@ -279,8 +322,13 @@ export default function Perfil() {
             <Field
               label="Nascimento"
               value={nascimento}
-              onChangeText={setNascimento}
-              placeholder="2000-01-01"
+              onChangeText={(valor) => {
+                const digitos = valor.replace(/\D/g, "").slice(0, 8);
+                setNascimento([digitos.slice(0, 2), digitos.slice(2, 4), digitos.slice(4)].filter(Boolean).join("/"));
+              }}
+              placeholder="DD/MM/AAAA"
+              keyboardType="number-pad"
+              maxLength={10}
             />
 
             <Text style={styles.fieldLabel}>Bio</Text>
@@ -338,6 +386,21 @@ export default function Perfil() {
         </View>
 
         <View style={styles.settingsCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingIconStage}>
+              <SymbolView name={{ ios: "location.fill", android: "location_on", web: "location_on" } as any}
+                size={27} tintColor="#E9233E" style={styles.settingIcon} />
+            </View>
+            <View style={styles.settingCopy}>
+              <Text style={styles.settingTitle}>Distância aproximada</Text>
+              <Text style={styles.settingSubtitle}>Mostrar distância em km entre perfis que ativaram a localização</Text>
+            </View>
+            <Switch accessibilityLabel="Distância aproximada" value={localizacaoAtiva}
+              onValueChange={alterarLocalizacao} disabled={alterandoLocalizacao} />
+          </View>
+
+          <View style={styles.settingDivider} />
+
           <View style={styles.settingRow}>
             <View style={styles.settingIconStage}>
               <SymbolView
@@ -405,12 +468,14 @@ function Field({
   onChangeText,
   placeholder,
   maxLength,
+  keyboardType,
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
   maxLength?: number;
+  keyboardType?: "number-pad";
 }) {
   return (
     <View style={styles.field}>
@@ -421,6 +486,7 @@ function Field({
         placeholder={placeholder}
         placeholderTextColor="#69635F"
         maxLength={maxLength}
+        keyboardType={keyboardType}
         style={styles.input}
       />
     </View>

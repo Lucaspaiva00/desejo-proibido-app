@@ -614,7 +614,8 @@ export default function Feed() {
                 <Icon name={ICONS.nearby} size={16} color="#E9B949" />
                 <Text style={styles.location}>
                   {usuario?.perfil?.cidade || "Salvador"}, {usuario?.perfil?.estado || "BA"}
-                  {usuario?.perfil?.cidade && meuPerfil?.cidade && usuario.perfil.cidade === meuPerfil.cidade ? " • perto de você" : ""}
+                  {usuario?.distanciaKm != null ? ` • ~${usuario.distanciaKm} km` :
+                    usuario?.perfil?.cidade && meuPerfil?.cidade && usuario.perfil.cidade === meuPerfil.cidade ? " • perto de você" : ""}
                 </Text>
               </View>
 

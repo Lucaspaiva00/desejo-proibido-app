@@ -91,6 +91,7 @@ function DrawerContent(props: any) {
   const [saldo, setSaldo] = useState(0);
   const [vip, setVip] = useState(false);
   const [foto, setFoto] = useState("");
+  const [perfilFeminino, setPerfilFeminino] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteSenha, setDeleteSenha] = useState("");
   const [deleteConfirmacao, setDeleteConfirmacao] = useState("");
@@ -129,6 +130,7 @@ function DrawerContent(props: any) {
       setSaldo(Number(usuario?.saldoCreditos || 0));
       setVip(!!(usuario?.premiumAtivo || usuario?.isPremium));
       setFoto(principal?.url || "");
+      setPerfilFeminino(["F", "FEMININO", "FEMALE", "MULHER"].includes(String(perfil?.genero || "").trim().toUpperCase()));
     } catch {
       // Mantém o drawer funcional mesmo se o resumo não carregar.
     }
@@ -267,6 +269,7 @@ function DrawerContent(props: any) {
             </View>
 
             {section.items.map((item) => {
+              if (item.route === "criadora" && !perfilFeminino) return null;
               const active = activeRoute === item.route;
 
               return (

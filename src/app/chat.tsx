@@ -1,13 +1,23 @@
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder,
+} from "expo-audio";
 import * as ImagePicker from "expo-image-picker";
 import { SymbolView } from "expo-symbols";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -24,6 +34,7 @@ import {
   buscarMensagens,
   desbloquearMidia,
   editarMensagem,
+  enviarAudio,
   enviarFoto,
   enviarMensagemTexto,
   liberarConversa,
@@ -31,7 +42,7 @@ import {
   statusConversa,
 } from "../services/chat";
 import { enviarPresente, listarPresentes } from "../services/presentes";
-import { uploadFotoCloudinary } from "../services/upload";
+import { uploadAudioCloudinary, uploadFotoCloudinary } from "../services/upload";
 import { obterToken } from "../storage/auth";
 
 const GOLD = "#E8BE5A";
@@ -57,7 +68,39 @@ function formatTime(value?: string | Date | null) {
 export default function Chat() {
   const params = useLocalSearchParams<{ conversaId?: string }>();
   const conversaIdParam = params.conversaId ? String(params.conversaId) : "";
-  const listaRef = useRef<FlatList>(null);
+  const gravador = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const gravadorOcupado = useRef(false);
+  const conversaEmFoco = useRef(false);
+  const gravacaoAtiva = useRef(false);
+  const envioCreditosOcupado = useRef(false);
+  const [gravando, setGravando] = useState(false);
+  const [enviandoAudio, setEnviandoAudio] = useState(false);
+  const [tecladoVisivel, setTecladoVisivel] = useState(false);
+  const [dialogo, setDialogo] = useState<"opcoes" | "creditos" | null>(null);
+  const [quantidadeCreditos, setQuantidadeCreditos] = useState("");
+  const [transferindoCreditos, setTransferindoCreditos] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    conversaEmFoco.current = true;
+    return () => {
+      conversaEmFoco.current = false;
+      if (!gravacaoAtiva.current) return;
+      gravacaoAtiva.current = false;
+      setGravando(false);
+      gravador.stop().catch(() => {}).finally(() => {
+        setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+      });
+    };
+  }, [gravador]));
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setTecladoVisivel(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setTecladoVisivel(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const [meuId, setMeuId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -153,11 +196,6 @@ export default function Chat() {
       const novas = Array.isArray(data?.mensagens) ? data.mensagens : [];
       setMensagens(novas);
 
-      if (!silent) {
-        setTimeout(() => {
-          listaRef.current?.scrollToEnd({ animated: false });
-        }, 100);
-      }
     } catch (error) {
       if (!silent) console.log("Erro ao carregar mensagens:", error);
     }
@@ -259,7 +297,7 @@ export default function Chat() {
     }
   }
 
-  async function desbloquearFoto(item: any) {
+  async function desbloquearAnexo(item: any) {
     if (!item?.id) return;
 
     try {
@@ -293,52 +331,25 @@ export default function Chat() {
     }
   }
 
-  function enviarCreditos() {
-    const destinatarioId =
-      conversaAtual?.outroUsuarioId ||
-      conversaAtual?.outro?.id;
+  async function enviarCreditos() {
+    const destinatarioId = conversaAtual?.outroUsuarioId || conversaAtual?.outro?.id;
+    const quantidade = Number(quantidadeCreditos);
+    if (!destinatarioId || !Number.isSafeInteger(quantidade) || quantidade < 1 || envioCreditosOcupado.current) return;
 
-    if (!destinatarioId) {
-      Alert.alert("Erro", "Destinatário não encontrado.");
-      return;
+    envioCreditosOcupado.current = true;
+    setTransferindoCreditos(true);
+    try {
+      await presentearCreditos(destinatarioId, quantidade, "Presente enviado pelo chat");
+      setDialogo(null);
+      setQuantidadeCreditos("");
+      await carregarStatus(conversaIdParam);
+      Alert.alert("Créditos enviados", `${quantidade} créditos enviados.`);
+    } catch (error: any) {
+      Alert.alert("Erro", error?.response?.data?.erro || error?.response?.data?.error || "Falha ao enviar créditos.");
+    } finally {
+      envioCreditosOcupado.current = false;
+      setTransferindoCreditos(false);
     }
-
-    if (Platform.OS !== "ios") {
-      Alert.alert(
-        "Enviar créditos",
-        "No navegador, use a opção Presentes ou Comprar créditos. O envio manual de créditos fica disponível no aplicativo."
-      );
-      return;
-    }
-
-    Alert.prompt(
-      "Enviar créditos",
-      "Digite a quantidade",
-      async (valor) => {
-        try {
-          const quantidade = Number(valor);
-          if (!quantidade || quantidade <= 0) return;
-
-          await presentearCreditos(
-            destinatarioId,
-            quantidade,
-            "Presente enviado pelo chat"
-          );
-
-          await carregarStatus(conversaIdParam);
-          Alert.alert("Créditos enviados", `${quantidade} créditos enviados.`);
-        } catch (e: any) {
-          Alert.alert(
-            "Erro",
-            e?.response?.data?.erro ||
-              e?.response?.data?.error ||
-              e?.message ||
-              "Falha ao enviar créditos."
-          );
-        }
-      },
-      "plain-text"
-    );
   }
 
   function abrirMenuMensagem(item: any) {
@@ -431,22 +442,54 @@ export default function Chat() {
     if (id) router.push(`/usuario?id=${id}`);
   }
 
-  function menuConversa() {
-    Alert.alert("Conversa", undefined, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Ver perfil", onPress: abrirPerfil },
-      {
-        text: "Enviar créditos",
-        onPress: enviarCreditos,
-      },
-    ]);
-  }
+  async function alternarAudio() {
+    if (!conversaIdParam || !chatLiberado || gravadorOcupado.current) return;
 
-  function audioIndisponivel() {
-    Alert.alert(
-      "Áudio",
-      "A gravação de áudio ainda não está habilitada nesta versão."
-    );
+    gravadorOcupado.current = true;
+    let continuaGravando = false;
+    try {
+      if (!gravando) {
+        const permissao = await AudioModule.requestRecordingPermissionsAsync();
+        if (!permissao.granted) {
+          Alert.alert("Permissão necessária", "Permita o acesso ao microfone para gravar.");
+          return;
+        }
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        if (!conversaEmFoco.current) return;
+        await gravador.prepareToRecordAsync();
+        if (!conversaEmFoco.current) {
+          await gravador.stop().catch(() => {});
+          return;
+        }
+        gravador.record();
+        gravacaoAtiva.current = true;
+        setGravando(true);
+        continuaGravando = true;
+        return;
+      }
+
+      gravacaoAtiva.current = false;
+      setEnviandoAudio(true);
+      const duracao = gravador.getStatus().durationMillis;
+      await gravador.stop();
+      if (!gravador.uri || duracao < 500) {
+        Alert.alert("Áudio muito curto", "Grave pelo menos meio segundo e tente novamente.");
+        return;
+      }
+
+      const mediaPath = await uploadAudioCloudinary(gravador.uri);
+      await enviarAudio(conversaIdParam, mediaPath, Math.round(duracao / 1000));
+      await Promise.all([carregarMensagens(conversaIdParam), carregarStatus(conversaIdParam)]);
+    } catch (error: any) {
+      Alert.alert("Não foi possível gravar ou enviar", error?.response?.data?.erro || error?.message);
+    } finally {
+      if (!continuaGravando) {
+        setGravando(false);
+        await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+      }
+      setEnviandoAudio(false);
+      gravadorOcupado.current = false;
+    }
   }
 
   function abrirVideochamada() {
@@ -458,10 +501,7 @@ export default function Chat() {
   const isPremium = !!outroDetalhes?.isPremium;
   const verificado = !!outroDetalhes?.perfil?.verificado;
 
-  const presentesVisiveis = useMemo(
-    () => presentes.slice(0, 8),
-    [presentes]
-  );
+  const mensagensRecentes = useMemo(() => [...mensagens].reverse(), [mensagens]);
 
   if (loading) {
     return (
@@ -588,7 +628,7 @@ export default function Chat() {
           </Pressable>
 
           <Pressable
-            onPress={menuConversa}
+            onPress={() => setDialogo("opcoes")}
             style={({ pressed }) => [
               styles.moreRound,
               pressed && styles.pressed,
@@ -626,8 +666,10 @@ export default function Chat() {
       </View>
 
       <FlatList
-        ref={listaRef}
-        data={mensagens}
+        inverted
+        style={styles.messageList}
+        keyboardShouldPersistTaps="handled"
+        data={mensagensRecentes}
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.messages}
@@ -660,12 +702,29 @@ export default function Chat() {
             );
           }
 
+          if (item.tipo === "AUDIO") {
+            return (
+              <View style={[styles.bubble, minha ? styles.bubbleMine : styles.bubbleOther]}>
+                {item.locked ? (
+                  <Pressable onPress={() => desbloquearAnexo(item)}>
+                    <Text style={styles.bubbleText}>Desbloquear áudio · {Number(item.custoMoedas || 0)} créditos</Text>
+                  </Pressable>
+                ) : item.audioUrl ? (
+                  <AudioMessage uri={item.audioUrl} />
+                ) : (
+                  <Text style={styles.bubbleText}>Áudio indisponível</Text>
+                )}
+                <Text style={styles.messageTime}>{time}</Text>
+              </View>
+            );
+          }
+
           if (item.tipo === "FOTO") {
             const photoUri = item.mediaUrl || item.thumbUrl;
 
             return (
               <Pressable
-                onPress={() => item.locked && desbloquearFoto(item)}
+                onPress={() => item.locked && desbloquearAnexo(item)}
                 style={[
                   styles.photoMessage,
                   minha ? styles.alignMine : styles.alignOther,
@@ -777,14 +836,14 @@ export default function Chat() {
         </View>
       ) : null}
 
-      {presentesVisiveis.length ? (
+      {!tecladoVisivel && presentes.length ? (
         <View style={styles.giftsStrip}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.giftsContent}
           >
-            {presentesVisiveis.map((item: any) => {
+            {presentes.map((item: any) => {
               const imageUrl = absoluteAsset(item.imagemUrl);
               const enviandoEste = presenteEmEnvio === String(item.id);
 
@@ -809,7 +868,12 @@ export default function Chat() {
                     ) : null}
                   </View>
                   <View style={styles.giftCostRow}>
-                    <Text style={styles.giftDiamond}>♦</Text>
+                    <SymbolView
+                      name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+                      size={12}
+                      tintColor="#42CBFF"
+                      style={styles.giftDiamond}
+                    />
                     <Text style={styles.giftCost}>
                       {Number(item.custoCreditos || 0)}
                     </Text>
@@ -824,7 +888,7 @@ export default function Chat() {
         </View>
       ) : null}
 
-      <View style={styles.toolsStrip}>
+      {!tecladoVisivel ? <View style={styles.toolsStrip}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -845,10 +909,11 @@ export default function Chat() {
             disabled={!chatLiberado || enviandoMidia}
           />
           <Tool
-            label="Áudio"
+            label={gravando ? "Enviar áudio" : "Áudio"}
             color="#156DDF"
             icon={{ ios: "mic.fill", android: "mic", web: "mic" }}
-            onPress={audioIndisponivel}
+            onPress={alternarAudio}
+            disabled={!chatLiberado || enviandoAudio}
           />
           <Tool
             label="Vídeo"
@@ -876,10 +941,10 @@ export default function Chat() {
             label="Mais"
             color="#34363C"
             icon={{ ios: "plus", android: "add", web: "add" }}
-            onPress={menuConversa}
+            onPress={() => setDialogo("opcoes")}
           />
         </ScrollView>
-      </View>
+      </View> : null}
 
       <View style={styles.composer}>
         <View style={styles.inputWrap}>
@@ -893,6 +958,8 @@ export default function Chat() {
             value={texto}
             onChangeText={setTexto}
             editable={chatLiberado && !enviando}
+            onFocus={() => { if (Platform.OS === "android") setTecladoVisivel(true); }}
+            onBlur={() => setTecladoVisivel(false)}
             placeholder={
               editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
             }
@@ -904,6 +971,24 @@ export default function Chat() {
         </View>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
+          disabled={!chatLiberado || enviandoAudio}
+          onPress={alternarAudio}
+          style={[styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
+        >
+          <SymbolView
+            name={(gravando
+              ? { ios: "stop.fill", android: "stop", web: "stop" }
+              : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
+            size={23}
+            tintColor="#FFF"
+            style={styles.sendIcon}
+          />
+        </Pressable>
+
+        <Pressable
+          accessibilityLabel="Enviar mensagem"
           disabled={!chatLiberado || enviando || !texto.trim()}
           onPress={enviar}
           style={({ pressed }) => [
@@ -921,7 +1006,63 @@ export default function Chat() {
           />
         </Pressable>
       </View>
+
+      <Modal visible={dialogo !== null} transparent animationType="fade"
+        onRequestClose={() => { if (!transferindoCreditos) setDialogo(null); }}>
+        <KeyboardAvoidingView style={styles.dialogBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          {dialogo === "opcoes" ? <View style={styles.dialog}>
+            <Text style={styles.bubbleText}>Opções da conversa</Text>
+            <View style={styles.dialogActions}>
+              <Tool label="Enviar créditos" color="#087D52"
+                icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
+                onPress={() => { setDialogo("creditos"); }} />
+              <Tool label="Ver perfil" color="#9A6A00"
+                icon={{ ios: "person.crop.circle", android: "person", web: "person" }}
+                onPress={() => { setDialogo(null); abrirPerfil(); }} />
+              <Tool label="Cancelar" color="#34363C"
+                icon={{ ios: "xmark", android: "close", web: "close" }}
+                onPress={() => setDialogo(null)} />
+            </View>
+          </View> : dialogo === "creditos" ? <View style={styles.dialog}>
+            <Text style={styles.bubbleText}>Enviar créditos</Text>
+            <View style={styles.inputWrap}>
+              <TextInput value={quantidadeCreditos} onChangeText={setQuantidadeCreditos}
+                editable={!transferindoCreditos} placeholder="Quantidade de créditos" placeholderTextColor="#999"
+                keyboardType="number-pad" accessibilityLabel="Quantidade de créditos" style={styles.input} />
+            </View>
+            <View style={styles.dialogActions}>
+              <Pressable disabled={transferindoCreditos} onPress={() => setDialogo(null)} hitSlop={8}>
+                <Text style={styles.bubbleText}>Cancelar</Text>
+              </Pressable>
+              <Pressable disabled={transferindoCreditos || !/^[1-9][0-9]*$/.test(quantidadeCreditos)}
+                onPress={enviarCreditos} hitSlop={8}>
+                <Text style={styles.bubbleText}>{transferindoCreditos ? "Enviando..." : "Enviar"}</Text>
+              </Pressable>
+            </View>
+          </View> : null}
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
+  );
+}
+
+function AudioMessage({ uri }: { uri: string }) {
+  const player = useAudioPlayer(uri);
+  const status = useAudioPlayerStatus(player);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={async () => {
+        if (status.playing) {
+          player.pause();
+        } else {
+          if (status.duration > 0 && status.currentTime >= status.duration) await player.seekTo(0);
+          player.play();
+        }
+      }}
+    >
+      <Text style={styles.bubbleText}>{status.playing ? "Pausar áudio" : "Reproduzir áudio"}</Text>
+    </Pressable>
   );
 }
 
@@ -1219,6 +1360,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
+  messageList: { flex: 1, minHeight: 0 },
+  dialogBackdrop: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0009" },
+  dialog: { width: "90%", maxWidth: 370, padding: 20, gap: 14, borderRadius: 18, borderWidth: 1, borderColor: GOLD, backgroundColor: "#110D0B" },
+  dialogActions: { flexDirection: "row", justifyContent: "space-around", alignItems: "center" },
+  audioButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#24344D", alignItems: "center", justifyContent: "center" },
   messages: {
     paddingHorizontal: 14,
     paddingBottom: 14,
@@ -1465,8 +1611,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   giftDiamond: {
-    color: "#42CBFF",
-    fontSize: 10,
+    width: 12,
+    height: 12,
   },
   giftCost: {
     color: "#F2C961",
