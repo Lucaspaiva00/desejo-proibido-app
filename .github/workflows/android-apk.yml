@@ -1,0 +1,55 @@
+name: Android test APK
+
+on:
+  push:
+    branches: [build/android-apk]
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Generate Android project for internal testing
+        run: |
+          cat > app.config.js <<'CONFIG'
+          module.exports = ({ config }) => ({
+            ...config,
+            name: "Desejo Proibido Teste",
+            scheme: "desejoproibidoteste",
+            android: { ...config.android, package: "com.desejoproibido.app.preview" },
+          });
+          CONFIG
+          CI=1 npx expo prebuild --platform android --no-install
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      - name: Build standalone Android APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g"
+      - name: Verify and name APK
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -E '^package:|^application-label:|^native-code:'
+          cp "$apk" Desejo-Proibido-Teste-1.1.0.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desejo-proibido-android-teste
+          path: Desejo-Proibido-Teste-1.1.0.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
