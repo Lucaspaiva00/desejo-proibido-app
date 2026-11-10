@@ -26,6 +26,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import {
+  KeyboardAvoidingView as NativeKeyboardAvoidingView,
+  KeyboardEvents,
+} from "react-native-keyboard-controller";
 import { buscarUsuarioLogado } from "../services/auth";
 import { api } from "../services/api";
 import { presentearCreditos } from "../services/carteira";
@@ -44,6 +48,9 @@ import {
 import { enviarPresente, listarPresentes } from "../services/presentes";
 import { uploadAudioCloudinary, uploadFotoCloudinary } from "../services/upload";
 import { obterToken } from "../storage/auth";
+
+const ChatKeyboardAvoidingView =
+  Platform.OS === "android" ? NativeKeyboardAvoidingView : KeyboardAvoidingView;
 
 const GOLD = "#E8BE5A";
 const RED = "#C70A27";
@@ -94,8 +101,12 @@ export default function Chat() {
   }, [gravador]));
 
   useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setTecladoVisivel(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setTecladoVisivel(false));
+    const show = Platform.OS === "android"
+      ? KeyboardEvents.addListener("keyboardWillShow", () => setTecladoVisivel(true))
+      : Keyboard.addListener("keyboardDidShow", () => setTecladoVisivel(true));
+    const hide = Platform.OS === "android"
+      ? KeyboardEvents.addListener("keyboardDidHide", () => setTecladoVisivel(false))
+      : Keyboard.addListener("keyboardDidHide", () => setTecladoVisivel(false));
     return () => {
       show.remove();
       hide.remove();
@@ -527,9 +538,10 @@ export default function Chat() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <ChatKeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "web" ? undefined : "padding"}
+      {...(Platform.OS === "android" ? { automaticOffset: true } : {})}
     >
       <View style={styles.chatHeader}>
         <Pressable
@@ -958,8 +970,6 @@ export default function Chat() {
             value={texto}
             onChangeText={setTexto}
             editable={chatLiberado && !enviando}
-            onFocus={() => { if (Platform.OS === "android") setTecladoVisivel(true); }}
-            onBlur={() => setTecladoVisivel(false)}
             placeholder={
               editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
             }
@@ -1042,7 +1052,7 @@ export default function Chat() {
           </View> : null}
         </KeyboardAvoidingView>
       </Modal>
-    </KeyboardAvoidingView>
+    </ChatKeyboardAvoidingView>
   );
 }
 
