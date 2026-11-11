@@ -540,7 +540,7 @@ export default function Chat() {
   return (
     <ChatKeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "web" ? undefined : "padding"}
+      behavior={Platform.select({ android: "height", ios: "padding" })}
       {...(Platform.OS === "android" ? { automaticOffset: true } : {})}
     >
       <View style={styles.chatHeader}>
@@ -1673,6 +1673,7 @@ const styles = StyleSheet.create({
   },
 
   composer: {
+    flexShrink: 0,
     minHeight: 72,
     backgroundColor: "#030303",
     flexDirection: "row",
