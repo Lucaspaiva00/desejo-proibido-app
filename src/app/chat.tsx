@@ -543,7 +543,7 @@ export default function Chat() {
       behavior={Platform.select({ android: "height", ios: "padding" })}
       {...(Platform.OS === "android" ? { automaticOffset: true } : {})}
     >
-      <View style={styles.chatHeader}>
+      <View style={[styles.chatHeader, tecladoVisivel && styles.chatHeaderCompact]}>
         <Pressable
           onPress={() => router.replace("/conversas")}
           hitSlop={10}
@@ -651,7 +651,7 @@ export default function Chat() {
         </View>
       </View>
 
-      <View style={styles.creditStrip}>
+      <View style={[styles.creditStrip, tecladoVisivel && styles.creditStripCompact]}>
         <View style={styles.creditBadge}>
           <SymbolView
             name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
@@ -671,7 +671,7 @@ export default function Chat() {
         </View>
       </View>
 
-      <View style={styles.dateWrap}>
+      <View style={[styles.dateWrap, tecladoVisivel && styles.dateWrapCompact]}>
         <View style={styles.dateChip}>
           <Text style={styles.dateText}>Hoje</Text>
         </View>
@@ -1586,6 +1586,9 @@ const styles = StyleSheet.create({
     height: 17,
   },
 
+  chatHeaderCompact: { minHeight: 68, paddingTop: 4, paddingBottom: 4 },
+  creditStripCompact: { minHeight: 37 },
+  dateWrapCompact: { paddingVertical: 2 },
   chatControls: { flexShrink: 0 },
   giftsStripCompact: { minHeight: 0 },
   stripContentCompact: { paddingVertical: 4 },
