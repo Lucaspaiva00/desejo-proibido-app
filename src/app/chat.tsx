@@ -848,173 +848,177 @@ export default function Chat() {
         </View>
       ) : null}
 
-      {!tecladoVisivel && presentes.length ? (
-        <View style={styles.giftsStrip}>
+      <View style={styles.chatControls}>
+        {presentes.length > 0 ? (
+          <View style={[styles.giftsStrip, tecladoVisivel && styles.giftsStripCompact]}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={[styles.giftsContent, tecladoVisivel && styles.stripContentCompact]}
+            >
+              {presentes.map((item: any) => {
+                const imageUrl = absoluteAsset(item.imagemUrl);
+                const enviandoEste = presenteEmEnvio === String(item.id);
+
+                return (
+                  <Pressable
+                    key={String(item.id)}
+                    disabled={!chatLiberado || !!presenteEmEnvio}
+                    onPress={() => enviarPresenteChat(String(item.id))}
+                    style={({ pressed }) => [
+                      styles.giftItem,
+                      (!chatLiberado || enviandoEste) && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={[styles.giftImageFrame, tecladoVisivel && styles.giftImageFrameCompact]}>
+                      {imageUrl ? (
+                        <Image
+                          source={{ uri: imageUrl }}
+                          resizeMode="contain"
+                          style={[styles.giftImage, tecladoVisivel && styles.giftImageCompact]}
+                        />
+                      ) : null}
+                    </View>
+                    <View style={styles.giftCostRow}>
+                      <SymbolView
+                        name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+                        size={12}
+                        tintColor="#42CBFF"
+                        style={styles.giftDiamond}
+                      />
+                      <Text style={styles.giftCost}>
+                        {Number(item.custoCreditos || 0)}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={styles.giftName}>
+                      {item.nome || "Presente"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        <View style={[styles.toolsStrip, tecladoVisivel && styles.toolsStripCompact]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.giftsContent}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.toolsContent, tecladoVisivel && styles.stripContentCompact]}
           >
-            {presentes.map((item: any) => {
-              const imageUrl = absoluteAsset(item.imagemUrl);
-              const enviandoEste = presenteEmEnvio === String(item.id);
-
-              return (
-                <Pressable
-                  key={String(item.id)}
-                  disabled={!chatLiberado || !!presenteEmEnvio}
-                  onPress={() => enviarPresenteChat(String(item.id))}
-                  style={({ pressed }) => [
-                    styles.giftItem,
-                    (!chatLiberado || enviandoEste) && styles.disabled,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.giftImageFrame}>
-                    {imageUrl ? (
-                      <Image
-                        source={{ uri: imageUrl }}
-                        resizeMode="contain"
-                        style={styles.giftImage}
-                      />
-                    ) : null}
-                  </View>
-                  <View style={styles.giftCostRow}>
-                    <SymbolView
-                      name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
-                      size={12}
-                      tintColor="#42CBFF"
-                      style={styles.giftDiamond}
-                    />
-                    <Text style={styles.giftCost}>
-                      {Number(item.custoCreditos || 0)}
-                    </Text>
-                  </View>
-                  <Text numberOfLines={1} style={styles.giftName}>
-                    {item.nome || "Presente"}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            <Tool
+              label="Foto"
+              color="#E51D43"
+              icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
+              onPress={tirarFoto}
+              disabled={!chatLiberado || enviandoMidia}
+            />
+            <Tool
+              label="Galeria"
+              color="#7C37E8"
+              icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
+              onPress={selecionarFoto}
+              disabled={!chatLiberado || enviandoMidia}
+            />
+            <Tool
+              label={gravando ? "Enviar áudio" : "Áudio"}
+              color="#156DDF"
+              icon={{ ios: "mic.fill", android: "mic", web: "mic" }}
+              onPress={alternarAudio}
+              disabled={!chatLiberado || enviandoAudio}
+            />
+            <Tool
+              label="Vídeo"
+              color="#9A6A00"
+              icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
+              onPress={abrirVideochamada}
+            />
+            <Tool
+              label="Presente"
+              color="#A80724"
+              icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
+              onPress={() => {
+                if (!chatLiberado) {
+                  Alert.alert("Conversa bloqueada", "Libere o chat antes de enviar presentes.");
+                }
+              }}
+            />
+            <Tool
+              label="Comprar créditos"
+              color="#087D52"
+              icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
+              onPress={() => router.push("/creditos")}
+            />
+            <Tool
+              label="Mais"
+              color="#34363C"
+              icon={{ ios: "plus", android: "add", web: "add" }}
+              onPress={() => setDialogo("opcoes")}
+            />
           </ScrollView>
         </View>
-      ) : null}
 
-      {!tecladoVisivel ? <View style={styles.toolsStrip}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.toolsContent}
-        >
-          <Tool
-            label="Foto"
-            color="#E51D43"
-            icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
-            onPress={tirarFoto}
-            disabled={!chatLiberado || enviandoMidia}
-          />
-          <Tool
-            label="Galeria"
-            color="#7C37E8"
-            icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
-            onPress={selecionarFoto}
-            disabled={!chatLiberado || enviandoMidia}
-          />
-          <Tool
-            label={gravando ? "Enviar áudio" : "Áudio"}
-            color="#156DDF"
-            icon={{ ios: "mic.fill", android: "mic", web: "mic" }}
-            onPress={alternarAudio}
-            disabled={!chatLiberado || enviandoAudio}
-          />
-          <Tool
-            label="Vídeo"
-            color="#9A6A00"
-            icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
-            onPress={abrirVideochamada}
-          />
-          <Tool
-            label="Presente"
-            color="#A80724"
-            icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
-            onPress={() => {
-              if (!chatLiberado) {
-                Alert.alert("Conversa bloqueada", "Libere o chat antes de enviar presentes.");
+        <View style={styles.composer}>
+          <View style={styles.inputWrap}>
+            <SymbolView
+              name={{ ios: "face.smiling", android: "sentiment_satisfied", web: "sentiment_satisfied" } as any}
+              size={23}
+              tintColor="#9C9794"
+              style={styles.smileIcon}
+            />
+            <TextInput
+              value={texto}
+              onChangeText={setTexto}
+              editable={chatLiberado && !enviando}
+              placeholder={
+                editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
               }
-            }}
-          />
-          <Tool
-            label="Comprar créditos"
-            color="#087D52"
-            icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
-            onPress={() => router.push("/creditos")}
-          />
-          <Tool
-            label="Mais"
-            color="#34363C"
-            icon={{ ios: "plus", android: "add", web: "add" }}
-            onPress={() => setDialogo("opcoes")}
-          />
-        </ScrollView>
-      </View> : null}
+              placeholderTextColor="#77716D"
+              style={styles.input}
+              returnKeyType="send"
+              onSubmitEditing={enviar}
+            />
+          </View>
 
-      <View style={styles.composer}>
-        <View style={styles.inputWrap}>
-          <SymbolView
-            name={{ ios: "face.smiling", android: "sentiment_satisfied", web: "sentiment_satisfied" } as any}
-            size={23}
-            tintColor="#9C9794"
-            style={styles.smileIcon}
-          />
-          <TextInput
-            value={texto}
-            onChangeText={setTexto}
-            editable={chatLiberado && !enviando}
-            placeholder={
-              editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
-            }
-            placeholderTextColor="#77716D"
-            style={styles.input}
-            returnKeyType="send"
-            onSubmitEditing={enviar}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
+            disabled={!chatLiberado || enviandoAudio}
+            onPress={alternarAudio}
+            style={[styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
+          >
+            <SymbolView
+              name={(gravando
+                ? { ios: "stop.fill", android: "stop", web: "stop" }
+                : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
+              size={23}
+              tintColor="#FFF"
+              style={styles.sendIcon}
+            />
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Enviar mensagem"
+            disabled={!chatLiberado || enviando || !texto.trim()}
+            onPress={enviar}
+            style={({ pressed }) => [
+              styles.sendButton,
+              (!chatLiberado || enviando || !texto.trim()) &&
+                styles.sendButtonDisabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            <SymbolView
+              name={{ ios: "paperplane.fill", android: "send", web: "send" } as any}
+              size={25}
+              tintColor="#FFF"
+              style={styles.sendIcon}
+            />
+          </Pressable>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
-          disabled={!chatLiberado || enviandoAudio}
-          onPress={alternarAudio}
-          style={[styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
-        >
-          <SymbolView
-            name={(gravando
-              ? { ios: "stop.fill", android: "stop", web: "stop" }
-              : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
-            size={23}
-            tintColor="#FFF"
-            style={styles.sendIcon}
-          />
-        </Pressable>
-
-        <Pressable
-          accessibilityLabel="Enviar mensagem"
-          disabled={!chatLiberado || enviando || !texto.trim()}
-          onPress={enviar}
-          style={({ pressed }) => [
-            styles.sendButton,
-            (!chatLiberado || enviando || !texto.trim()) &&
-              styles.sendButtonDisabled,
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "paperplane.fill", android: "send", web: "send" } as any}
-            size={25}
-            tintColor="#FFF"
-            style={styles.sendIcon}
-          />
-        </Pressable>
       </View>
 
       <Modal visible={dialogo !== null} transparent animationType="fade"
@@ -1581,6 +1585,13 @@ const styles = StyleSheet.create({
     width: 17,
     height: 17,
   },
+
+  chatControls: { flexShrink: 0 },
+  giftsStripCompact: { minHeight: 0 },
+  stripContentCompact: { paddingVertical: 4 },
+  giftImageFrameCompact: { width: 40, height: 40 },
+  giftImageCompact: { width: 34, height: 34 },
+  toolsStripCompact: { minHeight: 0 },
 
   giftsStrip: {
     minHeight: 121,

@@ -23,7 +23,7 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.desejoproibido.app",
-      "versionCode": 4
+      "versionCode": 5
     },
     "web": {
       "output": "static",
