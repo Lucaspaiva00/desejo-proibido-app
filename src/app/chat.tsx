@@ -1096,9 +1096,8 @@ function Tool({
       <View style={[styles.toolIcon, toolbar && styles.toolbarIcon, { borderColor: color, backgroundColor: `${color}33` }]}>
         <SymbolView
           name={icon as any}
-          size={27}
+          size={22}
           tintColor={color === "#9A6A00" ? "#F5D060" : "#FFF"}
-          style={styles.toolSymbol}
         />
       </View>
       <Text style={styles.toolLabel}>{label}</Text>
@@ -1657,10 +1656,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   toolbarIcon: { width: 34, height: 34 },
-  toolSymbol: {
-    width: 22,
-    height: 22,
-  },
   toolLabel: {
     color: "#D8D0CB",
     fontSize: 8.5,
