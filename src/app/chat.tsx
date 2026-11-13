@@ -1011,7 +1011,7 @@ export default function Chat() {
         <KeyboardAvoidingView style={styles.dialogBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           {dialogo === "opcoes" ? <View style={styles.dialog}>
             <Text style={styles.bubbleText}>Opções da conversa</Text>
-            <View style={styles.dialogActions}>
+            <View style={[styles.dialogActions, styles.dialogTools]}>
               <Tool label="Enviar créditos" color="#087D52"
                 icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
                 onPress={() => { setDialogo("creditos"); }} />
@@ -1361,6 +1361,7 @@ const styles = StyleSheet.create({
   messageList: { flex: 1, minHeight: 0 },
   dialogBackdrop: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0009" },
   dialog: { width: "90%", maxWidth: 370, padding: 20, gap: 14, borderRadius: 18, borderWidth: 1, borderColor: GOLD, backgroundColor: "#110D0B" },
+  dialogTools: { alignItems: "flex-start" },
   dialogActions: { flexDirection: "row", justifyContent: "space-around", alignItems: "center" },
   audioButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#24344D", alignItems: "center", justifyContent: "center" },
   messages: {

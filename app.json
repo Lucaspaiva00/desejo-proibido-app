@@ -11,7 +11,7 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.desejoproibido.app",
       "supportsTablet": false,
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.desejoproibido.app",
-      "versionCode": 6
+      "versionCode": 7
     },
     "web": {
       "output": "static",
@@ -42,6 +42,7 @@
         }
       ],
       "expo-web-browser",
+      ["expo-secure-store", { "faceIDPermission": "Permitir que o Desejo Proibido use o Face ID para acessar sua conta." }],
       "expo-notifications",
       "expo-dev-client",
       ["expo-audio", { "microphonePermission": "Permitir a gravação de mensagens de áudio." }],
