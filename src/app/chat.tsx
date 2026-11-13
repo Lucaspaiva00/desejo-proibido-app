@@ -887,13 +887,9 @@ export default function Chat() {
         ) : null}
 
         <View style={styles.toolsStrip}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.toolsContent}
-          >
+          <View style={styles.toolsContent}>
             <Tool
+              toolbar
               label="Foto"
               color="#E51D43"
               icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
@@ -901,6 +897,7 @@ export default function Chat() {
               disabled={!chatLiberado || enviandoMidia}
             />
             <Tool
+              toolbar
               label="Galeria"
               color="#7C37E8"
               icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
@@ -908,6 +905,7 @@ export default function Chat() {
               disabled={!chatLiberado || enviandoMidia}
             />
             <Tool
+              toolbar
               label={gravando ? "Enviar áudio" : "Áudio"}
               color="#156DDF"
               icon={{ ios: "mic.fill", android: "mic", web: "mic" }}
@@ -915,12 +913,14 @@ export default function Chat() {
               disabled={!chatLiberado || enviandoAudio}
             />
             <Tool
+              toolbar
               label="Vídeo"
               color="#9A6A00"
               icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
               onPress={abrirVideochamada}
             />
             <Tool
+              toolbar
               label="Presente"
               color="#A80724"
               icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
@@ -931,18 +931,20 @@ export default function Chat() {
               }}
             />
             <Tool
+              toolbar
               label="Comprar créditos"
               color="#087D52"
               icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
               onPress={() => router.push("/creditos")}
             />
             <Tool
+              toolbar
               label="Mais"
               color="#34363C"
               icon={{ ios: "plus", android: "add", web: "add" }}
               onPress={() => setDialogo("opcoes")}
             />
-          </ScrollView>
+          </View>
         </View>
 
         <View style={styles.composer}>
@@ -1071,12 +1073,14 @@ function Tool({
   color,
   onPress,
   disabled = false,
+  toolbar = false,
 }: {
   label: string;
   icon: { ios: string; android: string; web: string };
   color: string;
   onPress: () => void;
   disabled?: boolean;
+  toolbar?: boolean;
 }) {
   return (
     <Pressable
@@ -1084,11 +1088,12 @@ function Tool({
       onPress={onPress}
       style={({ pressed }) => [
         styles.tool,
+        toolbar && styles.toolbarTool,
         disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.toolIcon, { borderColor: color, backgroundColor: `${color}33` }]}>
+      <View style={[styles.toolIcon, toolbar && styles.toolbarIcon, { borderColor: color, backgroundColor: `${color}33` }]}>
         <SymbolView
           name={icon as any}
           size={27}
@@ -1633,14 +1638,16 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(232,190,90,0.20)",
   },
   toolsContent: {
-    paddingHorizontal: 9,
+    flexDirection: "row",
+    paddingHorizontal: 6,
     paddingVertical: 4,
-    gap: 4,
+    gap: 2,
   },
   tool: {
     width: 53,
     alignItems: "center",
   },
+  toolbarTool: { flex: 1, minWidth: 0, width: undefined },
   toolIcon: {
     width: 40,
     height: 40,
@@ -1649,6 +1656,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  toolbarIcon: { width: 34, height: 34 },
   toolSymbol: {
     width: 22,
     height: 22,

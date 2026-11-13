@@ -11,7 +11,7 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.desejoproibido.app",
       "supportsTablet": false,
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.desejoproibido.app",
-      "versionCode": 7
+      "versionCode": 8
     },
     "web": {
       "output": "static",

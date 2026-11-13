@@ -78,6 +78,11 @@ const sections = [
         symbol: { ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" },
       },
       {
+        route: "suporte",
+        label: "Suporte",
+        symbol: { ios: "questionmark.circle", android: "support_agent", web: "support_agent" },
+      },
+      {
         route: "bloqueados",
         label: "Bloqueados",
         symbol: { ios: "person.crop.circle.badge.xmark", android: "person_off", web: "person_off" },
@@ -470,6 +475,7 @@ export default function Layout() {
       <Drawer.Screen name="carteira" options={{ title: "Carteira" }} />
       <Drawer.Screen name="creditos" options={{ title: "Comprar créditos" }} />
       <Drawer.Screen name="criadora" options={{ title: "Área da Criadora" }} />
+      <Drawer.Screen name="suporte" options={{ title: "Suporte" }} />
       <Drawer.Screen name="bloqueados" options={{ title: "Bloqueados" }} />
 
       <Drawer.Screen name="index" options={{ drawerItemStyle: { display: "none" } }} />
