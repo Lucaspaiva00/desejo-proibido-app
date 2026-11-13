@@ -15,7 +15,6 @@ import {
   Alert,
   FlatList,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,7 +27,6 @@ import {
 } from "react-native";
 import {
   KeyboardAvoidingView as NativeKeyboardAvoidingView,
-  KeyboardEvents,
 } from "react-native-keyboard-controller";
 import { buscarUsuarioLogado } from "../services/auth";
 import { api } from "../services/api";
@@ -82,7 +80,6 @@ export default function Chat() {
   const envioCreditosOcupado = useRef(false);
   const [gravando, setGravando] = useState(false);
   const [enviandoAudio, setEnviandoAudio] = useState(false);
-  const [tecladoVisivel, setTecladoVisivel] = useState(false);
   const [dialogo, setDialogo] = useState<"opcoes" | "creditos" | null>(null);
   const [quantidadeCreditos, setQuantidadeCreditos] = useState("");
   const [transferindoCreditos, setTransferindoCreditos] = useState(false);
@@ -99,19 +96,6 @@ export default function Chat() {
       });
     };
   }, [gravador]));
-
-  useEffect(() => {
-    const show = Platform.OS === "android"
-      ? KeyboardEvents.addListener("keyboardWillShow", () => setTecladoVisivel(true))
-      : Keyboard.addListener("keyboardDidShow", () => setTecladoVisivel(true));
-    const hide = Platform.OS === "android"
-      ? KeyboardEvents.addListener("keyboardDidHide", () => setTecladoVisivel(false))
-      : Keyboard.addListener("keyboardDidHide", () => setTecladoVisivel(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   const [meuId, setMeuId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -392,19 +376,20 @@ export default function Chat() {
   }
 
   async function enviar() {
-    if (!conversaIdParam || !texto.trim() || !chatLiberado) return;
+    if (!conversaIdParam || !texto.trim() || !chatLiberado || enviando) return;
 
+    const mensagem = texto.trim();
     try {
       setEnviando(true);
 
       if (editandoId) {
-        await editarMensagem(editandoId, texto.trim());
+        await editarMensagem(editandoId, mensagem);
         setEditandoId(null);
       } else {
-        await enviarMensagemTexto(conversaIdParam, texto.trim());
+        await enviarMensagemTexto(conversaIdParam, mensagem);
       }
 
-      setTexto("");
+      setTexto((atual) => atual === texto ? "" : atual);
 
       await Promise.all([
         carregarMensagens(conversaIdParam),
@@ -543,7 +528,7 @@ export default function Chat() {
       behavior={Platform.select({ android: "height", ios: "padding" })}
       {...(Platform.OS === "android" ? { automaticOffset: true } : {})}
     >
-      <View style={[styles.chatHeader, tecladoVisivel && styles.chatHeaderCompact]}>
+      <View style={styles.chatHeader}>
         <Pressable
           onPress={() => router.replace("/conversas")}
           hitSlop={10}
@@ -651,7 +636,7 @@ export default function Chat() {
         </View>
       </View>
 
-      <View style={[styles.creditStrip, tecladoVisivel && styles.creditStripCompact]}>
+      <View style={styles.creditStrip}>
         <View style={styles.creditBadge}>
           <SymbolView
             name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
@@ -671,7 +656,7 @@ export default function Chat() {
         </View>
       </View>
 
-      <View style={[styles.dateWrap, tecladoVisivel && styles.dateWrapCompact]}>
+      <View style={styles.dateWrap}>
         <View style={styles.dateChip}>
           <Text style={styles.dateText}>Hoje</Text>
         </View>
@@ -850,12 +835,12 @@ export default function Chat() {
 
       <View style={styles.chatControls}>
         {presentes.length > 0 ? (
-          <View style={[styles.giftsStrip, tecladoVisivel && styles.giftsStripCompact]}>
+          <View style={styles.giftsStrip}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.giftsContent, tecladoVisivel && styles.stripContentCompact]}
+              contentContainerStyle={styles.giftsContent}
             >
               {presentes.map((item: any) => {
                 const imageUrl = absoluteAsset(item.imagemUrl);
@@ -866,18 +851,17 @@ export default function Chat() {
                     key={String(item.id)}
                     disabled={!chatLiberado || !!presenteEmEnvio}
                     onPress={() => enviarPresenteChat(String(item.id))}
-                    style={({ pressed }) => [
+                    style={[
                       styles.giftItem,
                       (!chatLiberado || enviandoEste) && styles.disabled,
-                      pressed && styles.pressed,
                     ]}
                   >
-                    <View style={[styles.giftImageFrame, tecladoVisivel && styles.giftImageFrameCompact]}>
+                    <View style={styles.giftImageFrame}>
                       {imageUrl ? (
                         <Image
                           source={{ uri: imageUrl }}
                           resizeMode="contain"
-                          style={[styles.giftImage, tecladoVisivel && styles.giftImageCompact]}
+                          style={styles.giftImage}
                         />
                       ) : null}
                     </View>
@@ -902,12 +886,12 @@ export default function Chat() {
           </View>
         ) : null}
 
-        <View style={[styles.toolsStrip, tecladoVisivel && styles.toolsStripCompact]}>
+        <View style={styles.toolsStrip}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={[styles.toolsContent, tecladoVisivel && styles.stripContentCompact]}
+            contentContainerStyle={styles.toolsContent}
           >
             <Tool
               label="Foto"
@@ -972,12 +956,13 @@ export default function Chat() {
             <TextInput
               value={texto}
               onChangeText={setTexto}
-              editable={chatLiberado && !enviando}
+              editable={chatLiberado}
               placeholder={
                 editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
               }
               placeholderTextColor="#77716D"
               style={styles.input}
+              submitBehavior="submit"
               returnKeyType="send"
               onSubmitEditing={enviar}
             />
@@ -1164,10 +1149,9 @@ const styles = StyleSheet.create({
   },
 
   chatHeader: {
-    minHeight: 104,
+    minHeight: 68,
     paddingHorizontal: 12,
-    paddingTop: Platform.OS === "web" ? 10 : 16,
-    paddingBottom: 10,
+    paddingVertical: 4,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#030303",
@@ -1309,7 +1293,7 @@ const styles = StyleSheet.create({
   },
 
   creditStrip: {
-    minHeight: 47,
+    minHeight: 37,
     backgroundColor: "#030303",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(232,190,90,0.24)",
@@ -1356,7 +1340,7 @@ const styles = StyleSheet.create({
 
   dateWrap: {
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 2,
     backgroundColor: "#000",
   },
   dateChip: {
@@ -1586,18 +1570,9 @@ const styles = StyleSheet.create({
     height: 17,
   },
 
-  chatHeaderCompact: { minHeight: 68, paddingTop: 4, paddingBottom: 4 },
-  creditStripCompact: { minHeight: 37 },
-  dateWrapCompact: { paddingVertical: 2 },
   chatControls: { flexShrink: 0 },
-  giftsStripCompact: { minHeight: 0 },
-  stripContentCompact: { paddingVertical: 4 },
-  giftImageFrameCompact: { width: 40, height: 40 },
-  giftImageCompact: { width: 34, height: 34 },
-  toolsStripCompact: { minHeight: 0 },
 
   giftsStrip: {
-    minHeight: 121,
     backgroundColor: "#050302",
     borderTopWidth: 1,
     borderTopColor: "rgba(232,190,90,0.42)",
@@ -1652,31 +1627,30 @@ const styles = StyleSheet.create({
   },
 
   toolsStrip: {
-    minHeight: 103,
     backgroundColor: "#030303",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(232,190,90,0.20)",
   },
   toolsContent: {
     paddingHorizontal: 9,
-    paddingVertical: 9,
-    gap: 10,
+    paddingVertical: 4,
+    gap: 4,
   },
   tool: {
-    width: 61,
+    width: 53,
     alignItems: "center",
   },
   toolIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1.3,
     alignItems: "center",
     justifyContent: "center",
   },
   toolSymbol: {
-    width: 29,
-    height: 29,
+    width: 22,
+    height: 22,
   },
   toolLabel: {
     color: "#D8D0CB",
