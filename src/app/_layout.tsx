@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DP_SERIF, LockHeart } from "../components/ui/dp-luxury";
 import { api } from "../services/api";
@@ -74,6 +76,11 @@ const sections = [
         route: "criadora",
         label: "Área da Criadora",
         symbol: { ios: "crown.fill", android: "workspace_premium", web: "workspace_premium" },
+      },
+      {
+        route: "suporte",
+        label: "Suporte",
+        symbol: { ios: "questionmark.circle", android: "support_agent", web: "support_agent" },
       },
       {
         route: "bloqueados",
@@ -445,7 +452,7 @@ export default function Layout() {
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(382, Math.round(width * 0.86));
 
-  return (
+  const drawer = (
     <Drawer
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={{
@@ -468,6 +475,7 @@ export default function Layout() {
       <Drawer.Screen name="carteira" options={{ title: "Carteira" }} />
       <Drawer.Screen name="creditos" options={{ title: "Comprar créditos" }} />
       <Drawer.Screen name="criadora" options={{ title: "Área da Criadora" }} />
+      <Drawer.Screen name="suporte" options={{ title: "Suporte" }} />
       <Drawer.Screen name="bloqueados" options={{ title: "Bloqueados" }} />
 
       <Drawer.Screen name="index" options={{ drawerItemStyle: { display: "none" } }} />
@@ -526,6 +534,8 @@ export default function Layout() {
       />
     </Drawer>
   );
+
+  return Platform.OS === "android" ? <KeyboardProvider>{drawer}</KeyboardProvider> : drawer;
 }
 
 const styles = StyleSheet.create({

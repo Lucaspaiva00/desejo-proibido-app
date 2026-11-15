@@ -15,7 +15,6 @@ import {
   Alert,
   FlatList,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -26,6 +25,9 @@ import {
   TextInput,
   View,
 } from "react-native";
+import {
+  KeyboardAvoidingView as NativeKeyboardAvoidingView,
+} from "react-native-keyboard-controller";
 import { buscarUsuarioLogado } from "../services/auth";
 import { api } from "../services/api";
 import { presentearCreditos } from "../services/carteira";
@@ -44,6 +46,9 @@ import {
 import { enviarPresente, listarPresentes } from "../services/presentes";
 import { uploadAudioCloudinary, uploadFotoCloudinary } from "../services/upload";
 import { obterToken } from "../storage/auth";
+
+const ChatKeyboardAvoidingView =
+  Platform.OS === "android" ? NativeKeyboardAvoidingView : KeyboardAvoidingView;
 
 const GOLD = "#E8BE5A";
 const RED = "#C70A27";
@@ -75,7 +80,6 @@ export default function Chat() {
   const envioCreditosOcupado = useRef(false);
   const [gravando, setGravando] = useState(false);
   const [enviandoAudio, setEnviandoAudio] = useState(false);
-  const [tecladoVisivel, setTecladoVisivel] = useState(false);
   const [dialogo, setDialogo] = useState<"opcoes" | "creditos" | null>(null);
   const [quantidadeCreditos, setQuantidadeCreditos] = useState("");
   const [transferindoCreditos, setTransferindoCreditos] = useState(false);
@@ -92,15 +96,6 @@ export default function Chat() {
       });
     };
   }, [gravador]));
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setTecladoVisivel(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setTecladoVisivel(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   const [meuId, setMeuId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -381,19 +376,20 @@ export default function Chat() {
   }
 
   async function enviar() {
-    if (!conversaIdParam || !texto.trim() || !chatLiberado) return;
+    if (!conversaIdParam || !texto.trim() || !chatLiberado || enviando) return;
 
+    const mensagem = texto.trim();
     try {
       setEnviando(true);
 
       if (editandoId) {
-        await editarMensagem(editandoId, texto.trim());
+        await editarMensagem(editandoId, mensagem);
         setEditandoId(null);
       } else {
-        await enviarMensagemTexto(conversaIdParam, texto.trim());
+        await enviarMensagemTexto(conversaIdParam, mensagem);
       }
 
-      setTexto("");
+      setTexto((atual) => atual === texto ? "" : atual);
 
       await Promise.all([
         carregarMensagens(conversaIdParam),
@@ -527,9 +523,10 @@ export default function Chat() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <ChatKeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.select({ android: "height", ios: "padding" })}
+      {...(Platform.OS === "android" ? { automaticOffset: true } : {})}
     >
       <View style={styles.chatHeader}>
         <Pressable
@@ -836,175 +833,179 @@ export default function Chat() {
         </View>
       ) : null}
 
-      {!tecladoVisivel && presentes.length ? (
-        <View style={styles.giftsStrip}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.giftsContent}
-          >
-            {presentes.map((item: any) => {
-              const imageUrl = absoluteAsset(item.imagemUrl);
-              const enviandoEste = presenteEmEnvio === String(item.id);
+      <View style={styles.chatControls}>
+        {presentes.length > 0 ? (
+          <View style={styles.giftsStrip}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.giftsContent}
+            >
+              {presentes.map((item: any) => {
+                const imageUrl = absoluteAsset(item.imagemUrl);
+                const enviandoEste = presenteEmEnvio === String(item.id);
 
-              return (
-                <Pressable
-                  key={String(item.id)}
-                  disabled={!chatLiberado || !!presenteEmEnvio}
-                  onPress={() => enviarPresenteChat(String(item.id))}
-                  style={({ pressed }) => [
-                    styles.giftItem,
-                    (!chatLiberado || enviandoEste) && styles.disabled,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.giftImageFrame}>
-                    {imageUrl ? (
-                      <Image
-                        source={{ uri: imageUrl }}
-                        resizeMode="contain"
-                        style={styles.giftImage}
+                return (
+                  <Pressable
+                    key={String(item.id)}
+                    disabled={!chatLiberado || !!presenteEmEnvio}
+                    onPress={() => enviarPresenteChat(String(item.id))}
+                    style={[
+                      styles.giftItem,
+                      (!chatLiberado || enviandoEste) && styles.disabled,
+                    ]}
+                  >
+                    <View style={styles.giftImageFrame}>
+                      {imageUrl ? (
+                        <Image
+                          source={{ uri: imageUrl }}
+                          resizeMode="contain"
+                          style={styles.giftImage}
+                        />
+                      ) : null}
+                    </View>
+                    <View style={styles.giftCostRow}>
+                      <SymbolView
+                        name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+                        size={12}
+                        tintColor="#42CBFF"
+                        style={styles.giftDiamond}
                       />
-                    ) : null}
-                  </View>
-                  <View style={styles.giftCostRow}>
-                    <SymbolView
-                      name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
-                      size={12}
-                      tintColor="#42CBFF"
-                      style={styles.giftDiamond}
-                    />
-                    <Text style={styles.giftCost}>
-                      {Number(item.custoCreditos || 0)}
+                      <Text style={styles.giftCost}>
+                        {Number(item.custoCreditos || 0)}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={styles.giftName}>
+                      {item.nome || "Presente"}
                     </Text>
-                  </View>
-                  <Text numberOfLines={1} style={styles.giftName}>
-                    {item.nome || "Presente"}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      ) : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
 
-      {!tecladoVisivel ? <View style={styles.toolsStrip}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.toolsContent}
-        >
-          <Tool
-            label="Foto"
-            color="#E51D43"
-            icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
-            onPress={tirarFoto}
-            disabled={!chatLiberado || enviandoMidia}
-          />
-          <Tool
-            label="Galeria"
-            color="#7C37E8"
-            icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
-            onPress={selecionarFoto}
-            disabled={!chatLiberado || enviandoMidia}
-          />
-          <Tool
-            label={gravando ? "Enviar áudio" : "Áudio"}
-            color="#156DDF"
-            icon={{ ios: "mic.fill", android: "mic", web: "mic" }}
-            onPress={alternarAudio}
-            disabled={!chatLiberado || enviandoAudio}
-          />
-          <Tool
-            label="Vídeo"
-            color="#9A6A00"
-            icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
-            onPress={abrirVideochamada}
-          />
-          <Tool
-            label="Presente"
-            color="#A80724"
-            icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
-            onPress={() => {
-              if (!chatLiberado) {
-                Alert.alert("Conversa bloqueada", "Libere o chat antes de enviar presentes.");
+        <View style={styles.toolsStrip}>
+          <View style={styles.toolsContent}>
+            <Tool
+              toolbar
+              label="Foto"
+              color="#E51D43"
+              icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
+              onPress={tirarFoto}
+              disabled={!chatLiberado || enviandoMidia}
+            />
+            <Tool
+              toolbar
+              label="Galeria"
+              color="#7C37E8"
+              icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
+              onPress={selecionarFoto}
+              disabled={!chatLiberado || enviandoMidia}
+            />
+            <Tool
+              toolbar
+              label={gravando ? "Enviar áudio" : "Áudio"}
+              color="#156DDF"
+              icon={{ ios: "mic.fill", android: "mic", web: "mic" }}
+              onPress={alternarAudio}
+              disabled={!chatLiberado || enviandoAudio}
+            />
+            <Tool
+              toolbar
+              label="Vídeo"
+              color="#9A6A00"
+              icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
+              onPress={abrirVideochamada}
+            />
+            <Tool
+              toolbar
+              label="Presente"
+              color="#A80724"
+              icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
+              onPress={() => {
+                if (!chatLiberado) {
+                  Alert.alert("Conversa bloqueada", "Libere o chat antes de enviar presentes.");
+                }
+              }}
+            />
+            <Tool
+              toolbar
+              label="Comprar créditos"
+              color="#087D52"
+              icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
+              onPress={() => router.push("/creditos")}
+            />
+            <Tool
+              toolbar
+              label="Mais"
+              color="#34363C"
+              icon={{ ios: "plus", android: "add", web: "add" }}
+              onPress={() => setDialogo("opcoes")}
+            />
+          </View>
+        </View>
+
+        <View style={styles.composer}>
+          <View style={styles.inputWrap}>
+            <SymbolView
+              name={{ ios: "face.smiling", android: "sentiment_satisfied", web: "sentiment_satisfied" } as any}
+              size={23}
+              tintColor="#9C9794"
+              style={styles.smileIcon}
+            />
+            <TextInput
+              value={texto}
+              onChangeText={setTexto}
+              editable={chatLiberado}
+              placeholder={
+                editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
               }
-            }}
-          />
-          <Tool
-            label="Comprar créditos"
-            color="#087D52"
-            icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
-            onPress={() => router.push("/creditos")}
-          />
-          <Tool
-            label="Mais"
-            color="#34363C"
-            icon={{ ios: "plus", android: "add", web: "add" }}
-            onPress={() => setDialogo("opcoes")}
-          />
-        </ScrollView>
-      </View> : null}
+              placeholderTextColor="#77716D"
+              style={styles.input}
+              submitBehavior="submit"
+              returnKeyType="send"
+              onSubmitEditing={enviar}
+            />
+          </View>
 
-      <View style={styles.composer}>
-        <View style={styles.inputWrap}>
-          <SymbolView
-            name={{ ios: "face.smiling", android: "sentiment_satisfied", web: "sentiment_satisfied" } as any}
-            size={23}
-            tintColor="#9C9794"
-            style={styles.smileIcon}
-          />
-          <TextInput
-            value={texto}
-            onChangeText={setTexto}
-            editable={chatLiberado && !enviando}
-            onFocus={() => { if (Platform.OS === "android") setTecladoVisivel(true); }}
-            onBlur={() => setTecladoVisivel(false)}
-            placeholder={
-              editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
-            }
-            placeholderTextColor="#77716D"
-            style={styles.input}
-            returnKeyType="send"
-            onSubmitEditing={enviar}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
+            disabled={!chatLiberado || enviandoAudio}
+            onPress={alternarAudio}
+            style={[styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
+          >
+            <SymbolView
+              name={(gravando
+                ? { ios: "stop.fill", android: "stop", web: "stop" }
+                : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
+              size={23}
+              tintColor="#FFF"
+              style={styles.sendIcon}
+            />
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Enviar mensagem"
+            disabled={!chatLiberado || enviando || !texto.trim()}
+            onPress={enviar}
+            style={({ pressed }) => [
+              styles.sendButton,
+              (!chatLiberado || enviando || !texto.trim()) &&
+                styles.sendButtonDisabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            <SymbolView
+              name={{ ios: "paperplane.fill", android: "send", web: "send" } as any}
+              size={25}
+              tintColor="#FFF"
+              style={styles.sendIcon}
+            />
+          </Pressable>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
-          disabled={!chatLiberado || enviandoAudio}
-          onPress={alternarAudio}
-          style={[styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
-        >
-          <SymbolView
-            name={(gravando
-              ? { ios: "stop.fill", android: "stop", web: "stop" }
-              : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
-            size={23}
-            tintColor="#FFF"
-            style={styles.sendIcon}
-          />
-        </Pressable>
-
-        <Pressable
-          accessibilityLabel="Enviar mensagem"
-          disabled={!chatLiberado || enviando || !texto.trim()}
-          onPress={enviar}
-          style={({ pressed }) => [
-            styles.sendButton,
-            (!chatLiberado || enviando || !texto.trim()) &&
-              styles.sendButtonDisabled,
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "paperplane.fill", android: "send", web: "send" } as any}
-            size={25}
-            tintColor="#FFF"
-            style={styles.sendIcon}
-          />
-        </Pressable>
       </View>
 
       <Modal visible={dialogo !== null} transparent animationType="fade"
@@ -1012,7 +1013,7 @@ export default function Chat() {
         <KeyboardAvoidingView style={styles.dialogBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           {dialogo === "opcoes" ? <View style={styles.dialog}>
             <Text style={styles.bubbleText}>Opções da conversa</Text>
-            <View style={styles.dialogActions}>
+            <View style={[styles.dialogActions, styles.dialogTools]}>
               <Tool label="Enviar créditos" color="#087D52"
                 icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
                 onPress={() => { setDialogo("creditos"); }} />
@@ -1042,7 +1043,7 @@ export default function Chat() {
           </View> : null}
         </KeyboardAvoidingView>
       </Modal>
-    </KeyboardAvoidingView>
+    </ChatKeyboardAvoidingView>
   );
 }
 
@@ -1072,12 +1073,14 @@ function Tool({
   color,
   onPress,
   disabled = false,
+  toolbar = false,
 }: {
   label: string;
   icon: { ios: string; android: string; web: string };
   color: string;
   onPress: () => void;
   disabled?: boolean;
+  toolbar?: boolean;
 }) {
   return (
     <Pressable
@@ -1085,16 +1088,16 @@ function Tool({
       onPress={onPress}
       style={({ pressed }) => [
         styles.tool,
+        toolbar && styles.toolbarTool,
         disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.toolIcon, { borderColor: color, backgroundColor: `${color}33` }]}>
+      <View style={[styles.toolIcon, toolbar && styles.toolbarIcon, { borderColor: color, backgroundColor: `${color}33` }]}>
         <SymbolView
           name={icon as any}
-          size={27}
+          size={22}
           tintColor={color === "#9A6A00" ? "#F5D060" : "#FFF"}
-          style={styles.toolSymbol}
         />
       </View>
       <Text style={styles.toolLabel}>{label}</Text>
@@ -1150,10 +1153,9 @@ const styles = StyleSheet.create({
   },
 
   chatHeader: {
-    minHeight: 104,
+    minHeight: 68,
     paddingHorizontal: 12,
-    paddingTop: Platform.OS === "web" ? 10 : 16,
-    paddingBottom: 10,
+    paddingVertical: 4,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#030303",
@@ -1295,7 +1297,7 @@ const styles = StyleSheet.create({
   },
 
   creditStrip: {
-    minHeight: 47,
+    minHeight: 37,
     backgroundColor: "#030303",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(232,190,90,0.24)",
@@ -1342,7 +1344,7 @@ const styles = StyleSheet.create({
 
   dateWrap: {
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 2,
     backgroundColor: "#000",
   },
   dateChip: {
@@ -1363,6 +1365,7 @@ const styles = StyleSheet.create({
   messageList: { flex: 1, minHeight: 0 },
   dialogBackdrop: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0009" },
   dialog: { width: "90%", maxWidth: 370, padding: 20, gap: 14, borderRadius: 18, borderWidth: 1, borderColor: GOLD, backgroundColor: "#110D0B" },
+  dialogTools: { alignItems: "flex-start" },
   dialogActions: { flexDirection: "row", justifyContent: "space-around", alignItems: "center" },
   audioButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#24344D", alignItems: "center", justifyContent: "center" },
   messages: {
@@ -1572,8 +1575,9 @@ const styles = StyleSheet.create({
     height: 17,
   },
 
+  chatControls: { flexShrink: 0 },
+
   giftsStrip: {
-    minHeight: 121,
     backgroundColor: "#050302",
     borderTopWidth: 1,
     borderTopColor: "rgba(232,190,90,0.42)",
@@ -1628,32 +1632,30 @@ const styles = StyleSheet.create({
   },
 
   toolsStrip: {
-    minHeight: 103,
     backgroundColor: "#030303",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(232,190,90,0.20)",
   },
   toolsContent: {
-    paddingHorizontal: 9,
-    paddingVertical: 9,
-    gap: 10,
+    flexDirection: "row",
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    gap: 2,
   },
   tool: {
-    width: 61,
+    width: 53,
     alignItems: "center",
   },
+  toolbarTool: { flex: 1, minWidth: 0, width: undefined },
   toolIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1.3,
     alignItems: "center",
     justifyContent: "center",
   },
-  toolSymbol: {
-    width: 29,
-    height: 29,
-  },
+  toolbarIcon: { width: 34, height: 34 },
   toolLabel: {
     color: "#D8D0CB",
     fontSize: 8.5,
@@ -1663,6 +1665,7 @@ const styles = StyleSheet.create({
   },
 
   composer: {
+    flexShrink: 0,
     minHeight: 72,
     backgroundColor: "#030303",
     flexDirection: "row",

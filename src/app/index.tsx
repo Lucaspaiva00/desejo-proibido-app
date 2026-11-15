@@ -15,7 +15,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../services/api";
-import { salvarToken } from "../storage/auth";
+import {
+  faceIdDisponivel,
+  obterSessaoFaceId,
+  removerSessaoFaceId,
+  salvarSessaoFaceId,
+  salvarToken,
+} from "../storage/auth";
 
 const SERIF = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 
@@ -24,6 +30,32 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [ativarFaceId, setAtivarFaceId] = useState(false);
+  const suportaFaceId = faceIdDisponivel();
+
+  async function entrarComFaceId() {
+    try {
+      setLoading(true);
+      const token = await obterSessaoFaceId();
+      if (!token) {
+        Alert.alert("Face ID", "Entre com sua senha e ative o Face ID neste iPhone.");
+        return;
+      }
+
+      await api.get("/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+      await salvarToken(token);
+      router.replace("/feed");
+    } catch (error: any) {
+      if ([401, 403].includes(error?.response?.status)) {
+        await removerSessaoFaceId();
+        Alert.alert("Sessão expirada", "Entre com sua senha para ativar o Face ID novamente.");
+      } else {
+        Alert.alert("Face ID", "Não foi possível entrar. Tente novamente ou use sua senha.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function entrar() {
     if (!email.trim() || !senha) {
@@ -36,6 +68,14 @@ export default function Login() {
         email: email.trim(),
         senha,
       });
+      await removerSessaoFaceId();
+      if (suportaFaceId && ativarFaceId) {
+        try {
+          await salvarSessaoFaceId(data.token);
+        } catch {
+          Alert.alert("Face ID", "A sessão foi iniciada. A ativação do Face ID ficou pendente.");
+        }
+      }
       await salvarToken(data.token);
       router.replace("/feed");
     } catch (error: any) {
@@ -160,6 +200,18 @@ export default function Login() {
                 <Text style={styles.loginText}>{loading ? "Entrando..." : "Entrar"}</Text>
                 <Text style={styles.loginArrow}>›</Text>
               </Pressable>
+
+              {suportaFaceId && (
+                <>
+                  <Pressable disabled={loading} onPress={entrarComFaceId} style={styles.forgotRow}>
+                    <Text style={styles.forgotText}>Entrar com Face ID</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ativarFaceId }}
+                    disabled={loading} onPress={() => setAtivarFaceId((ativo) => !ativo)} style={styles.forgotRow}>
+                    <Text style={styles.forgotText}>{ativarFaceId ? "☑" : "☐"} Ativar Face ID neste iPhone ao entrar</Text>
+                  </Pressable>
+                </>
+              )}
 
               <Pressable onPress={() => router.push("/cadastro")} style={styles.registerRow}>
                 <Text style={styles.registerMuted}>Ainda não tem uma conta?</Text>
