@@ -1140,8 +1140,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#030303",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(232,190,90,0.34)",
   },
   headerBack: {
     width: 36,
@@ -1280,8 +1278,6 @@ const styles = StyleSheet.create({
   creditStrip: {
     minHeight: 37,
     backgroundColor: "#030303",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(232,190,90,0.24)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
@@ -1560,20 +1556,13 @@ const styles = StyleSheet.create({
 
   chatControls: { flexShrink: 0 },
   composerPanel: {
-    backgroundColor: "#110D0B",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(232,190,90,0.28)",
+    backgroundColor: "#030303",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    gap: 8,
   },
 
   giftsStrip: {
-    backgroundColor: "#050302",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(232,190,90,0.42)",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(232,190,90,0.24)",
+    backgroundColor: "#030303",
   },
   giftsContent: {
     paddingHorizontal: 9,
