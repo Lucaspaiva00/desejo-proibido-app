@@ -8,8 +8,8 @@ import {
 } from "expo-audio";
 import * as ImagePicker from "expo-image-picker";
 import { SymbolView } from "expo-symbols";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -107,6 +107,35 @@ export default function Chat() {
   const [presentes, setPresentes] = useState<any[]>([]);
   const [chatLiberado, setChatLiberado] = useState(false);
   const [saldoCreditos, setSaldoCreditos] = useState(0);
+  const navigation = useNavigation();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.headerCreditContainer}>
+          <View style={styles.creditBadge}>
+            <SymbolView
+              name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+              size={18}
+              tintColor={GOLD}
+              style={styles.creditDiamondIcon}
+            />
+            <Text style={styles.creditBalance}>
+              {saldoCreditos.toLocaleString("pt-BR")}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Comprar créditos"
+              onPress={() => router.push("/creditos")}
+              style={styles.creditPlus}
+            >
+              <Text style={styles.creditPlusText}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+      ),
+    });
+  }, [navigation, saldoCreditos]);
   const [custoCreditos, setCustoCreditos] = useState(10);
   const [enviando, setEnviando] = useState(false);
   const [enviandoMidia, setEnviandoMidia] = useState(false);
@@ -632,26 +661,6 @@ export default function Chat() {
             ]}
           >
             <Text style={styles.moreRoundText}>•••</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.creditStrip}>
-        <View style={styles.creditBadge}>
-          <SymbolView
-            name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
-            size={18}
-            tintColor={GOLD}
-            style={styles.creditDiamondIcon}
-          />
-          <Text style={styles.creditBalance}>
-            {saldoCreditos.toLocaleString("pt-BR")}
-          </Text>
-          <Pressable
-            onPress={() => router.push("/creditos")}
-            style={styles.creditPlus}
-          >
-            <Text style={styles.creditPlusText}>+</Text>
           </Pressable>
         </View>
       </View>
@@ -1274,14 +1283,7 @@ const styles = StyleSheet.create({
     marginTop: -5,
   },
 
-  creditStrip: {
-    minHeight: 37,
-    backgroundColor: "#030303",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingHorizontal: 13,
-  },
+  headerCreditContainer: { marginRight: 12 },
   creditBadge: {
     height: 35,
     borderRadius: 18,
