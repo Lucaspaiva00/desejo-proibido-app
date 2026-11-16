@@ -50,8 +50,6 @@ import { obterToken } from "../storage/auth";
 const ChatKeyboardAvoidingView =
   Platform.OS === "android" ? NativeKeyboardAvoidingView : KeyboardAvoidingView;
 
-const CHAT_BACKGROUND = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAIAAAAip+O/AAAHVklEQVR42tVbS7IjOQgEh/ZzgbnB3P982Yv6CCESIdm9mBcOu1w/J5CJQKqn//3zr4iIiKpkfxC8W/ajb8PuvPbAHjP36Eefy8ZD99fhKoQ3kY+qXK/bjOn1HnjOVBWV5yLtV107+577HH2/XufYo8+2ukP3V3eVRF8/I9wZfzewm/QaM4F+90i339ugKxtGuPIe1HH39fVjIKpGEXht026Ss4T43n41NgizIXW83aUuApLhHrjkjOn7lfie22BxqfnQHSLpS6ExDsFLHItm3t8+n0MR22DBjZ91It0RsBqmIlbL/IT3hlEFG6J3XRFpDMJnkqr3/hAFnnN0ZFTNhkQM7N0HoTH5TwEUUcH1hmtDRPTeI9ee+ytEVAXQe1sEMm4rgHvbDB7Ptoog2h9h+7zxKotY9QmLiUbE+zQOjv4772rT0UeHDJ2I2Flys90wVSs2TLokJ3g1U458QoiR7/1pjzNWnNahTJnFINSwBbPlGchioLnvxZPKDhGxLpm/J8Q+CPGY8AS/9ZuqDxhsIjMVFDqFjXwVetdZVq+vIAcRv7e7945K7RdWInD7T1nuH+oH9TVc4JXRzSorIkWE2WDUxwpxLWKNBxprw/R7vk73atZw0KVSdv76GOhSKObeUc+Wa0NRoDpXzjQIzCqpi1iDAdW95jKuj/nOBuL7MAh0TEhYFBpgc4tGOVSnzENtmIk0BSHgjiaO18AY+9es5qafHjvCcdjHnV2GtPIWA092STaCigVTLgrPUpP6Pm8ONb3i5H7tbh08TTeEBoGxqBINSiGVQkU0VCBDf0iw5pUh5/yWhuXz8liHOnno3MXbMKc3nTpu5VJW4QFZWx1mIRlLfJpAuwULEJr+7NK3GpfzpBaSqeV9a82xgxn4Q2V/wIP1FZoVc2983yLRlA+qySBKpmv2QZ9f+HED+YPe1jx6lh++B1cT8f/8zxkA9KELyWSo1Grdb86vGmBRQkQAQC4zLiNAhmU6+fsF1oMLmwy9yz3v4JyPaU54ac8XmLB1m3ZNkaiYuZLpOjPZfc+peHsQ2fYr0iAzoglEFOg2+KYSdkYfbgVgxh0cB92Ib7Jle3u6Wryjp/NmD0KwxNCjssQU7UUKuSSq9uLHVcwG+fqWhKOT2/DQERtDNihWFCKAXrxAkLkCTtMTUGCHNrlOsTrrAtueCQykw6VZzxrRezql7nfLaCBMmlg283mikAxmZIbP6OHvG7g/lQeiPJOBDij0tHPrdUrY+HX0wLDbY+3DJIGF0zGkzUabAg6Ybwe3BurRO5Mc/VLVYuVvLwCINADXvP4LPP4BBGu0fjUXQkFT96f8CZzlbWs2nd+WFOoceIeBLESHcaB3q5CeUqgoYi+GCL0XBlhC8+5P8o/Ma/ejiHVpcTRgdWbYmEzoYxm4CyWgJQ/Ig6Zhp/rwQkQo5QQ9EBeLkyWR+ymFtEw4BMHnSYmgt+4Pk8/qfagXmgCgc92BY1Ix7KGfYrLtfgiaPZnNWoKbFCelKvqDd1+u9YZmqQPQosCN0Al6QTKMTBXK0v2vBrCjAQLdPN/E0bPOGVktx90/FHMH/R2DnqM/CxErzNpcSCtlf9TXI6yNozgs0afkCd0/jAO6VRiCPScXGAPEXZGrVbEiT5j9Gp5GEgX2rOp7BHsy9JZ5tEwMp0isBgBXSstGf51Bl+SRRY8eHGJIHkT9wIae0yHHFUgRqaIuh9qJrI5sqM0ez3bSLAg6FSAr9CGReGSegUzLzkceCtR4xdEHoUDSfOJkHAiaQJQlEeUcFqjJ5wjnFhr4YkTemAILNXPHU25MRvIWqosYmB+ao0MBsmhgmZ3izjjqkxDDnbnUglP2ZACs7GGOj/Yg9D0re++ZuTMJoBAKRIxjOgFplejUHYZaaCuNiqxmBRGJHKv2Okcf9k9tdwzDShogOk8XB+b5PEo29zPtaBmFFiop9JgS0WTwSipG5M1appv8mQXBMwboTvD+boUe7yJfnUVRWQesZsFOHT+H1p/Whh/fCAGWSxK8fQSb4Mi67Xj8dlkI21loZ2QYe8oKu1boxVLoqDOmuCvQhS4/V9HjNAtR0JRIKGmDkF6S//3q5XTheRLUiQRfVpa1sYPeldN7wUCpbS5Cj1AimUrr+vYU0h35FnFL+ijImePHanS/KQZZZEd6ZsmqHfR+JD5jz3JVqjI9PEMv0ex+2ONr6hO57nBp4Xh66Ms0Sh8ZQnpaAr3oeDsrsfE4Hhbz3etL6tAr6K9+APg2AiVTj6HnjDqb2DrVAFYxSRkfHMVpLbSrgQr0bdvQ06juVNPYCBQKdNqHPq5S8nidawB0UN6Fzhwv4ey0HgtgUUmsYZXOCVdoDuoIQikULd+BTh1vBjKUKum6EoozSBsWIjut/eQZVWzxays4WPxc+y3WZYWKspFA6c7tV88HS/0x1uUlqKyU4jAC+Rzj0VzGIfQgjf6ERzijFk6SB14Ry98UcQYC9RmnWEsH5fSPWrdT6MKe3P0LUo6Vgi8un6/9A/uHXEjE+C2xAAAAAElFTkSuQmCC" };
-
 const GOLD = "#E8BE5A";
 const RED = "#C70A27";
 const RED_BRIGHT = "#F21F42";
@@ -667,190 +665,182 @@ export default function Chat() {
         </View>
       </View>
 
-      <View style={styles.conversationBody}>
-        <Image
-          accessible={false}
-          source={CHAT_BACKGROUND}
-          resizeMode="stretch"
-          style={styles.conversationBackground}
-        />
-        <View style={styles.dateWrap}>
-          <View style={styles.dateChip}>
-            <Text style={styles.dateText}>Hoje</Text>
-          </View>
+      <View style={styles.dateWrap}>
+        <View style={styles.dateChip}>
+          <Text style={styles.dateText}>Hoje</Text>
         </View>
+      </View>
 
-        <FlatList
-          inverted
-          style={styles.messageList}
-          keyboardShouldPersistTaps="handled"
-          data={mensagensRecentes}
-          keyExtractor={(item) => String(item.id)}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.messages}
-          renderItem={({ item }) => {
-            const minha = String(item.autorId) === String(meuId);
-            const time = formatTime(item.criadoEm);
+      <FlatList
+        inverted
+        style={styles.messageList}
+        keyboardShouldPersistTaps="handled"
+        data={mensagensRecentes}
+        keyExtractor={(item) => String(item.id)}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.messages}
+        renderItem={({ item }) => {
+          const minha = String(item.autorId) === String(meuId);
+          const time = formatTime(item.criadoEm);
 
-            if (item.tipo === "PRESENTE") {
-              const imageUrl = absoluteAsset(item?.metaJson?.imagemUrl);
+          if (item.tipo === "PRESENTE") {
+            const imageUrl = absoluteAsset(item?.metaJson?.imagemUrl);
 
-              return (
-                <View
-                  style={[
-                    styles.giftMessage,
-                    minha ? styles.alignMine : styles.alignOther,
-                  ]}
-                >
-                  {imageUrl ? (
-                    <Image
-                      source={{ uri: imageUrl }}
-                      resizeMode="contain"
-                      style={styles.giftMessageImage}
-                    />
-                  ) : null}
-                  <View style={styles.mediaMetaRow}>
-                    <Text style={styles.messageTime}>{time}</Text>
-                    {minha ? <Text style={styles.checks}>✓✓</Text> : null}
-                  </View>
-                </View>
-              );
-            }
-
-            if (item.tipo === "AUDIO") {
-              return (
-                <View style={[styles.bubble, minha ? styles.bubbleMine : styles.bubbleOther]}>
-                  {item.locked ? (
-                    <Pressable onPress={() => desbloquearAnexo(item)}>
-                      <Text style={styles.bubbleText}>Desbloquear áudio · {Number(item.custoMoedas || 0)} créditos</Text>
-                    </Pressable>
-                  ) : item.audioUrl ? (
-                    <AudioMessage uri={item.audioUrl} />
-                  ) : (
-                    <Text style={styles.bubbleText}>Áudio indisponível</Text>
-                  )}
+            return (
+              <View
+                style={[
+                  styles.giftMessage,
+                  minha ? styles.alignMine : styles.alignOther,
+                ]}
+              >
+                {imageUrl ? (
+                  <Image
+                    source={{ uri: imageUrl }}
+                    resizeMode="contain"
+                    style={styles.giftMessageImage}
+                  />
+                ) : null}
+                <View style={styles.mediaMetaRow}>
                   <Text style={styles.messageTime}>{time}</Text>
+                  {minha ? <Text style={styles.checks}>✓✓</Text> : null}
                 </View>
-              );
-            }
+              </View>
+            );
+          }
 
-            if (item.tipo === "FOTO") {
-              const photoUri = item.mediaUrl || item.thumbUrl;
+          if (item.tipo === "AUDIO") {
+            return (
+              <View style={[styles.bubble, minha ? styles.bubbleMine : styles.bubbleOther]}>
+                {item.locked ? (
+                  <Pressable onPress={() => desbloquearAnexo(item)}>
+                    <Text style={styles.bubbleText}>Desbloquear áudio · {Number(item.custoMoedas || 0)} créditos</Text>
+                  </Pressable>
+                ) : item.audioUrl ? (
+                  <AudioMessage uri={item.audioUrl} />
+                ) : (
+                  <Text style={styles.bubbleText}>Áudio indisponível</Text>
+                )}
+                <Text style={styles.messageTime}>{time}</Text>
+              </View>
+            );
+          }
 
-              return (
-                <Pressable
-                  onPress={() => item.locked && desbloquearAnexo(item)}
-                  style={[
-                    styles.photoMessage,
-                    minha ? styles.alignMine : styles.alignOther,
-                  ]}
-                >
-                  {photoUri ? (
-                    <Image
-                      source={{ uri: photoUri }}
-                      resizeMode="cover"
-                      style={[
-                        styles.photoMessageImage,
-                        item.locked && styles.photoLocked,
-                      ]}
-                    />
-                  ) : (
-                    <View style={styles.photoPlaceholder}>
-                      <SymbolView
-                        name={{ ios: "photo", android: "image", web: "image" } as any}
-                        size={34}
-                        tintColor={GOLD}
-                        style={styles.photoPlaceholderIcon}
-                      />
-                    </View>
-                  )}
-
-                  {item.locked ? (
-                    <View style={styles.lockedOverlay}>
-                      <SymbolView
-                        name={{ ios: "lock.fill", android: "lock", web: "lock" } as any}
-                        size={24}
-                        tintColor="#FFF"
-                        style={styles.lockedIcon}
-                      />
-                      <Text style={styles.lockedTitle}>Desbloquear foto</Text>
-                      <Text style={styles.lockedCost}>
-                        ♦ {Number(item.custoMoedas || 0)} créditos
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.photoTime}>
-                    <Text style={styles.messageTime}>{time}</Text>
-                    {minha ? <Text style={styles.checks}>✓✓</Text> : null}
-                  </View>
-                </Pressable>
-              );
-            }
-
-            const sistema = item.tipo === "SISTEMA";
+          if (item.tipo === "FOTO") {
+            const photoUri = item.mediaUrl || item.thumbUrl;
 
             return (
               <Pressable
-                onLongPress={() => abrirMenuMensagem(item)}
+                onPress={() => item.locked && desbloquearAnexo(item)}
                 style={[
-                  styles.bubble,
-                  minha ? styles.bubbleMine : styles.bubbleOther,
-                  sistema && styles.systemBubble,
+                  styles.photoMessage,
+                  minha ? styles.alignMine : styles.alignOther,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    sistema && styles.systemBubbleText,
-                  ]}
-                >
-                  {item.textoExibido || item.texto || ""}
-                </Text>
+                {photoUri ? (
+                  <Image
+                    source={{ uri: photoUri }}
+                    resizeMode="cover"
+                    style={[
+                      styles.photoMessageImage,
+                      item.locked && styles.photoLocked,
+                    ]}
+                  />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <SymbolView
+                      name={{ ios: "photo", android: "image", web: "image" } as any}
+                      size={34}
+                      tintColor={GOLD}
+                      style={styles.photoPlaceholderIcon}
+                    />
+                  </View>
+                )}
 
-                <View style={styles.bubbleMeta}>
+                {item.locked ? (
+                  <View style={styles.lockedOverlay}>
+                    <SymbolView
+                      name={{ ios: "lock.fill", android: "lock", web: "lock" } as any}
+                      size={24}
+                      tintColor="#FFF"
+                      style={styles.lockedIcon}
+                    />
+                    <Text style={styles.lockedTitle}>Desbloquear foto</Text>
+                    <Text style={styles.lockedCost}>
+                      ♦ {Number(item.custoMoedas || 0)} créditos
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.photoTime}>
                   <Text style={styles.messageTime}>{time}</Text>
                   {minha ? <Text style={styles.checks}>✓✓</Text> : null}
                 </View>
               </Pressable>
             );
-          }}
-          ListEmptyComponent={
-            <View style={styles.noMessagesWrap}>
-              <Text style={styles.noMessages}>Comece a conversa.</Text>
-            </View>
           }
-        />
 
-        {!chatLiberado ? (
-          <View style={styles.paywall}>
-            <View style={styles.paywallCopy}>
-              <Text style={styles.paywallTitle}>Conversa privada</Text>
-              <Text style={styles.paywallText}>
-                Libere o chat para enviar mensagens, fotos e presentes.
-              </Text>
-            </View>
+          const sistema = item.tipo === "SISTEMA";
 
+          return (
             <Pressable
-              onPress={liberar}
-              style={({ pressed }) => [
-                styles.unlockButton,
-                pressed && styles.pressed,
+              onLongPress={() => abrirMenuMensagem(item)}
+              style={[
+                styles.bubble,
+                minha ? styles.bubbleMine : styles.bubbleOther,
+                sistema && styles.systemBubble,
               ]}
             >
-              <Text style={styles.unlockText}>
-                Liberar por {custoCreditos}
+              <Text
+                style={[
+                  styles.bubbleText,
+                  sistema && styles.systemBubbleText,
+                ]}
+              >
+                {item.textoExibido || item.texto || ""}
               </Text>
-              <SymbolView
-                name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
-                size={16}
-                tintColor={GOLD}
-                style={styles.unlockDiamond}
-              />
+
+              <View style={styles.bubbleMeta}>
+                <Text style={styles.messageTime}>{time}</Text>
+                {minha ? <Text style={styles.checks}>✓✓</Text> : null}
+              </View>
             </Pressable>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.noMessagesWrap}>
+            <Text style={styles.noMessages}>Comece a conversa.</Text>
           </View>
-        ) : null}
-      </View>
+        }
+      />
+
+      {!chatLiberado ? (
+        <View style={styles.paywall}>
+          <View style={styles.paywallCopy}>
+            <Text style={styles.paywallTitle}>Conversa privada</Text>
+            <Text style={styles.paywallText}>
+              Libere o chat para enviar mensagens, fotos e presentes.
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={liberar}
+            style={({ pressed }) => [
+              styles.unlockButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.unlockText}>
+              Liberar por {custoCreditos}
+            </Text>
+            <SymbolView
+              name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+              size={16}
+              tintColor={GOLD}
+              style={styles.unlockDiamond}
+            />
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={styles.chatControls}>
           {presentes.length > 0 ? <View style={styles.composerPanel}>
@@ -1331,11 +1321,10 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  conversationBody: { flex: 1, minHeight: 0, backgroundColor: "#29101F" },
-  conversationBackground: { position: "absolute", width: "100%", height: "100%" },
   dateWrap: {
     alignItems: "center",
     paddingVertical: 2,
+    backgroundColor: "#000",
   },
   dateChip: {
     minWidth: 78,
