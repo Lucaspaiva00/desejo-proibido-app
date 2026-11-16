@@ -80,7 +80,7 @@ export default function Chat() {
   const envioCreditosOcupado = useRef(false);
   const [gravando, setGravando] = useState(false);
   const [enviandoAudio, setEnviandoAudio] = useState(false);
-  const [dialogo, setDialogo] = useState<"opcoes" | "creditos" | "atalhos" | "presentes" | null>(null);
+  const [dialogo, setDialogo] = useState<"opcoes" | "creditos" | "atalhos" | null>(null);
   const [quantidadeCreditos, setQuantidadeCreditos] = useState("");
   const [transferindoCreditos, setTransferindoCreditos] = useState(false);
 
@@ -637,23 +637,6 @@ export default function Chat() {
       </View>
 
       <View style={styles.creditStrip}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: dialogo === "presentes" }}
-          onPress={() => setDialogo(dialogo === "presentes" ? null : "presentes")}
-          style={({ pressed }) => [
-            styles.giftShortcut,
-            dialogo === "presentes" && styles.giftShortcutActive,
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "gift.fill", android: "redeem", web: "redeem" } as any}
-            size={17}
-            tintColor={GOLD}
-          />
-          <Text style={styles.giftShortcutLabel}>Presentes</Text>
-        </Pressable>
         <View style={styles.creditBadge}>
           <SymbolView
             name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
@@ -881,59 +864,58 @@ export default function Chat() {
                 onPress={() => { setDialogo(null); router.push("/creditos"); }}
               />
             </View>
-          </View> : dialogo === "presentes" ? <View style={styles.composerPanel}>
+          </View> : null}
+          {presentes.length > 0 ? <View style={styles.composerPanel}>
             <Text style={styles.bubbleText}>Presentes</Text>
-            {presentes.length > 0 ? (
-              <View style={styles.giftsStrip}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={styles.giftsContent}
-                >
-                  {presentes.map((item: any) => {
-                    const imageUrl = absoluteAsset(item.imagemUrl);
-                    const enviandoEste = presenteEmEnvio === String(item.id);
+            <View style={styles.giftsStrip}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.giftsContent}
+              >
+                {presentes.map((item: any) => {
+                  const imageUrl = absoluteAsset(item.imagemUrl);
+                  const enviandoEste = presenteEmEnvio === String(item.id);
 
-                    return (
-                      <Pressable
-                        key={String(item.id)}
-                        disabled={!chatLiberado || !!presenteEmEnvio}
-                        onPress={() => enviarPresenteChat(String(item.id))}
-                        style={[
-                          styles.giftItem,
-                          (!chatLiberado || enviandoEste) && styles.disabled,
-                        ]}
-                      >
-                        <View style={styles.giftImageFrame}>
-                          {imageUrl ? (
-                            <Image
-                              source={{ uri: imageUrl }}
-                              resizeMode="contain"
-                              style={styles.giftImage}
-                            />
-                          ) : <Text style={styles.bubbleText}>Nenhum presente disponível.</Text>}
-                        </View>
-                        <View style={styles.giftCostRow}>
-                          <SymbolView
-                            name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
-                            size={12}
-                            tintColor={GOLD}
-                            style={styles.giftDiamond}
+                  return (
+                    <Pressable
+                      key={String(item.id)}
+                      disabled={!chatLiberado || !!presenteEmEnvio}
+                      onPress={() => enviarPresenteChat(String(item.id))}
+                      style={[
+                        styles.giftItem,
+                        (!chatLiberado || enviandoEste) && styles.disabled,
+                      ]}
+                    >
+                      <View style={styles.giftImageFrame}>
+                        {imageUrl ? (
+                          <Image
+                            source={{ uri: imageUrl }}
+                            resizeMode="contain"
+                            style={styles.giftImage}
                           />
-                          <Text style={styles.giftCost}>
-                            {Number(item.custoCreditos || 0)}
-                          </Text>
-                        </View>
-                        <Text numberOfLines={1} style={styles.giftName}>
-                          {item.nome || "Presente"}
+                        ) : null}
+                      </View>
+                      <View style={styles.giftCostRow}>
+                        <SymbolView
+                          name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+                          size={12}
+                          tintColor={GOLD}
+                          style={styles.giftDiamond}
+                        />
+                        <Text style={styles.giftCost}>
+                          {Number(item.custoCreditos || 0)}
                         </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            ) : null}
+                      </View>
+                      <Text numberOfLines={1} style={styles.giftName}>
+                        {item.nome || "Presente"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
           </View> : null}
         <View style={styles.composer}>
           <Pressable
@@ -956,7 +938,7 @@ export default function Chat() {
               value={texto}
               onChangeText={setTexto}
               onFocus={() => {
-                if (dialogo === "atalhos" || dialogo === "presentes") setDialogo(null);
+                if (dialogo === "atalhos") setDialogo(null);
               }}
               editable={chatLiberado}
               placeholder={
@@ -1304,22 +1286,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(232,190,90,0.24)",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     paddingHorizontal: 13,
   },
-  giftShortcut: {
-    minHeight: 36,
-    paddingHorizontal: 10,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(232,190,90,0.45)",
-    backgroundColor: "#17120B",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  giftShortcutActive: { borderColor: GOLD, backgroundColor: "#30230F" },
-  giftShortcutLabel: { color: GOLD, fontWeight: "700", fontSize: 12 },
   creditBadge: {
     height: 35,
     borderRadius: 18,
