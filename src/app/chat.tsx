@@ -835,7 +835,6 @@ export default function Chat() {
 
       <View style={styles.chatControls}>
           {presentes.length > 0 ? <View style={styles.composerPanel}>
-            <Text style={styles.bubbleText}>Presentes</Text>
             <View style={styles.giftsStrip}>
               <ScrollView
                 horizontal
