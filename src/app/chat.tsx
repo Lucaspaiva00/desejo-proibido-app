@@ -834,11 +834,96 @@ export default function Chat() {
       ) : null}
 
       <View style={styles.chatControls}>
+          {dialogo === "atalhos" ? <View style={styles.composerPanel}>
+            <Text style={styles.bubbleText}>Mais ações</Text>
+            <View style={styles.shortcutsGrid}>
+              <Tool
+                label="Foto"
+                color="#E51D43"
+                icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
+                onPress={() => { setDialogo(null); void tirarFoto(); }}
+                disabled={!chatLiberado || enviandoMidia}
+              />
+              <Tool
+                label="Galeria"
+                color="#7C37E8"
+                icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
+                onPress={() => { setDialogo(null); void selecionarFoto(); }}
+                disabled={!chatLiberado || enviandoMidia}
+              />
+              <Tool
+                label="Vídeo"
+                color="#9A6A00"
+                icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
+                onPress={() => { setDialogo(null); void abrirVideochamada(); }}
+              />
+              <Tool
+                label="Comprar créditos"
+                color="#087D52"
+                icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
+                onPress={() => { setDialogo(null); router.push("/creditos"); }}
+              />
+            </View>
+          </View> : dialogo === "presentes" ? <View style={styles.composerPanel}>
+            <Text style={styles.bubbleText}>Presentes</Text>
+            {presentes.length > 0 ? (
+              <View style={styles.giftsStrip}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.giftsContent}
+                >
+                  {presentes.map((item: any) => {
+                    const imageUrl = absoluteAsset(item.imagemUrl);
+                    const enviandoEste = presenteEmEnvio === String(item.id);
+
+                    return (
+                      <Pressable
+                        key={String(item.id)}
+                        disabled={!chatLiberado || !!presenteEmEnvio}
+                        onPress={() => enviarPresenteChat(String(item.id))}
+                        style={[
+                          styles.giftItem,
+                          (!chatLiberado || enviandoEste) && styles.disabled,
+                        ]}
+                      >
+                        <View style={styles.giftImageFrame}>
+                          {imageUrl ? (
+                            <Image
+                              source={{ uri: imageUrl }}
+                              resizeMode="contain"
+                              style={styles.giftImage}
+                            />
+                          ) : <Text style={styles.bubbleText}>Nenhum presente disponível.</Text>}
+                        </View>
+                        <View style={styles.giftCostRow}>
+                          <SymbolView
+                            name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
+                            size={12}
+                            tintColor={GOLD}
+                            style={styles.giftDiamond}
+                          />
+                          <Text style={styles.giftCost}>
+                            {Number(item.custoCreditos || 0)}
+                          </Text>
+                        </View>
+                        <Text numberOfLines={1} style={styles.giftName}>
+                          {item.nome || "Presente"}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
+          </View> : null}
         <View style={styles.composer}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Mais ações"
-            onPress={() => setDialogo("atalhos")}
+            accessibilityState={{ expanded: dialogo === "atalhos" }}
+            onPress={() => setDialogo(dialogo === "atalhos" ? null : "atalhos")}
             style={[styles.composerButton, styles.shortcutButton]}
           >
             <SymbolView name={{ ios: "plus", android: "add", web: "add" } as any} size={22} tintColor={GOLD} />
@@ -846,7 +931,8 @@ export default function Chat() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Presentes"
-            onPress={() => setDialogo("presentes")}
+            accessibilityState={{ expanded: dialogo === "presentes" }}
+            onPress={() => setDialogo(dialogo === "presentes" ? null : "presentes")}
             style={[styles.composerButton, styles.shortcutButton]}
           >
             <SymbolView name={{ ios: "gift.fill", android: "redeem", web: "redeem" } as any} size={22} tintColor={GOLD} />
@@ -912,99 +998,10 @@ export default function Chat() {
         </View>
       </View>
 
-      <Modal visible={dialogo !== null} transparent animationType="fade"
+      <Modal visible={dialogo === "opcoes" || dialogo === "creditos"} transparent animationType="fade"
         onRequestClose={() => { if (!transferindoCreditos) setDialogo(null); }}>
         <KeyboardAvoidingView style={styles.dialogBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          {dialogo === "atalhos" ? <View style={styles.dialog}>
-            <Text style={styles.bubbleText}>Mais ações</Text>
-            <View style={styles.shortcutsGrid}>
-              <Tool
-                label="Foto"
-                color="#E51D43"
-                icon={{ ios: "camera.fill", android: "photo_camera", web: "photo_camera" }}
-                onPress={() => { setDialogo(null); void tirarFoto(); }}
-                disabled={!chatLiberado || enviandoMidia}
-              />
-              <Tool
-                label="Galeria"
-                color="#7C37E8"
-                icon={{ ios: "photo.fill", android: "photo_library", web: "photo_library" }}
-                onPress={() => { setDialogo(null); void selecionarFoto(); }}
-                disabled={!chatLiberado || enviandoMidia}
-              />
-              <Tool
-                label="Vídeo"
-                color="#9A6A00"
-                icon={{ ios: "video.fill", android: "videocam", web: "videocam" }}
-                onPress={() => { setDialogo(null); void abrirVideochamada(); }}
-              />
-              <Tool
-                label="Comprar créditos"
-                color="#087D52"
-                icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
-                onPress={() => { setDialogo(null); router.push("/creditos"); }}
-              />
-            </View>
-            <Pressable accessibilityRole="button" onPress={() => setDialogo(null)}>
-              <Text style={styles.bubbleText}>Fechar</Text>
-            </Pressable>
-          </View> : dialogo === "presentes" ? <View style={styles.dialog}>
-            <Text style={styles.bubbleText}>Presentes</Text>
-            {presentes.length > 0 ? (
-              <View style={styles.giftsStrip}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={styles.giftsContent}
-                >
-                  {presentes.map((item: any) => {
-                    const imageUrl = absoluteAsset(item.imagemUrl);
-                    const enviandoEste = presenteEmEnvio === String(item.id);
-    
-                    return (
-                      <Pressable
-                        key={String(item.id)}
-                        disabled={!chatLiberado || !!presenteEmEnvio}
-                        onPress={() => enviarPresenteChat(String(item.id))}
-                        style={[
-                          styles.giftItem,
-                          (!chatLiberado || enviandoEste) && styles.disabled,
-                        ]}
-                      >
-                        <View style={styles.giftImageFrame}>
-                          {imageUrl ? (
-                            <Image
-                              source={{ uri: imageUrl }}
-                              resizeMode="contain"
-                              style={styles.giftImage}
-                            />
-                          ) : <Text style={styles.bubbleText}>Nenhum presente disponível.</Text>}
-                        </View>
-                        <View style={styles.giftCostRow}>
-                          <SymbolView
-                            name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
-                            size={12}
-                            tintColor={GOLD}
-                            style={styles.giftDiamond}
-                          />
-                          <Text style={styles.giftCost}>
-                            {Number(item.custoCreditos || 0)}
-                          </Text>
-                        </View>
-                        <Text numberOfLines={1} style={styles.giftName}>
-                          {item.nome || "Presente"}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            ) : null}
-            <Pressable accessibilityRole="button" onPress={() => setDialogo(null)}>
-              <Text style={styles.bubbleText}>Fechar</Text>
-            </Pressable>
-          </View> : dialogo === "opcoes" ? <View style={styles.dialog}>
+          {dialogo === "opcoes" ? <View style={styles.dialog}>
             <Text style={styles.bubbleText}>Opções da conversa</Text>
             <View style={[styles.dialogActions, styles.dialogTools]}>
               <Tool label="Enviar créditos" color="#087D52"
@@ -1567,6 +1564,14 @@ const styles = StyleSheet.create({
   },
 
   chatControls: { flexShrink: 0 },
+  composerPanel: {
+    backgroundColor: "#110D0B",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(232,190,90,0.28)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
 
   giftsStrip: {
     backgroundColor: "#050302",
