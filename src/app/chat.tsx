@@ -858,6 +858,12 @@ export default function Chat() {
                 onPress={() => { setDialogo(null); void abrirVideochamada(); }}
               />
               <Tool
+                label="Presentes"
+                color="#A80724"
+                icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
+                onPress={() => setDialogo("presentes")}
+              />
+              <Tool
                 label="Comprar créditos"
                 color="#087D52"
                 icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
@@ -921,21 +927,12 @@ export default function Chat() {
         <View style={styles.composer}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Mais ações"
-            accessibilityState={{ expanded: dialogo === "atalhos" }}
+            accessibilityLabel={dialogo === "presentes" ? "Voltar para anexos" : "Anexos"}
+            accessibilityState={{ expanded: dialogo === "atalhos" || dialogo === "presentes" }}
             onPress={() => setDialogo(dialogo === "atalhos" ? null : "atalhos")}
             style={[styles.composerButton, styles.shortcutButton]}
           >
             <SymbolView name={{ ios: "plus", android: "add", web: "add" } as any} size={22} tintColor={GOLD} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Presentes"
-            accessibilityState={{ expanded: dialogo === "presentes" }}
-            onPress={() => setDialogo(dialogo === "presentes" ? null : "presentes")}
-            style={[styles.composerButton, styles.shortcutButton]}
-          >
-            <SymbolView name={{ ios: "gift.fill", android: "redeem", web: "redeem" } as any} size={22} tintColor={GOLD} />
           </Pressable>
           <View style={styles.inputWrap}>
             <SymbolView
@@ -947,6 +944,9 @@ export default function Chat() {
             <TextInput
               value={texto}
               onChangeText={setTexto}
+              onFocus={() => {
+                if (dialogo === "atalhos" || dialogo === "presentes") setDialogo(null);
+              }}
               editable={chatLiberado}
               placeholder={
                 editandoId ? "Editando mensagem..." : "Digite uma mensagem..."
@@ -955,46 +955,49 @@ export default function Chat() {
               style={styles.input}
               submitBehavior="submit"
               returnKeyType="send"
-              onSubmitEditing={enviar}
+              onSubmitEditing={() => { if (!gravando && !enviandoAudio) void enviar(); }}
             />
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
-            disabled={!chatLiberado || enviandoAudio}
-            onPress={alternarAudio}
-            style={[styles.composerButton, styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
-          >
-            <SymbolView
-              name={(gravando
-                ? { ios: "stop.fill", android: "stop", web: "stop" }
-                : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
-              size={23}
-              tintColor="#FFF"
-              style={styles.sendIcon}
-            />
-          </Pressable>
-
-          <Pressable
-            accessibilityLabel="Enviar mensagem"
-            disabled={!chatLiberado || enviando || !texto.trim()}
-            onPress={enviar}
-            style={({ pressed }) => [
-              styles.composerButton,
-              styles.sendButton,
-              (!chatLiberado || enviando || !texto.trim()) &&
-                styles.sendButtonDisabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "paperplane.fill", android: "send", web: "send" } as any}
-              size={23}
-              tintColor="#FFF"
-              style={styles.sendIcon}
-            />
-          </Pressable>
+          {gravando || enviandoAudio || !texto.trim() ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={gravando ? "Parar e enviar áudio" : "Gravar áudio"}
+              disabled={!chatLiberado || enviandoAudio}
+              onPress={alternarAudio}
+              style={[styles.composerButton, styles.audioButton, gravando && styles.sendButton, (!chatLiberado || enviandoAudio) && styles.disabled]}
+            >
+              <SymbolView
+                name={(gravando
+                  ? { ios: "stop.fill", android: "stop", web: "stop" }
+                  : { ios: "mic.fill", android: "mic", web: "mic" }) as any}
+                size={23}
+                tintColor="#FFF"
+                style={styles.sendIcon}
+              />
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Enviar mensagem"
+              disabled={!chatLiberado || enviando || !texto.trim()}
+              onPress={enviar}
+              style={({ pressed }) => [
+                styles.composerButton,
+                styles.sendButton,
+                (!chatLiberado || enviando || !texto.trim()) &&
+                  styles.sendButtonDisabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView
+                name={{ ios: "paperplane.fill", android: "send", web: "send" } as any}
+                size={23}
+                tintColor="#FFF"
+                style={styles.sendIcon}
+              />
+            </Pressable>
+          )}
         </View>
       </View>
 
