@@ -849,6 +849,8 @@ export default function Chat() {
                   return (
                     <Pressable
                       key={String(item.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${item.nome || "Presente"}, ${Number(item.custoCreditos || 0)} créditos`}
                       disabled={!chatLiberado || !!presenteEmEnvio}
                       onPress={() => enviarPresenteChat(String(item.id))}
                       style={[
@@ -876,9 +878,6 @@ export default function Chat() {
                           {Number(item.custoCreditos || 0)}
                         </Text>
                       </View>
-                      <Text numberOfLines={1} style={styles.giftName}>
-                        {item.nome || "Presente"}
-                      </Text>
                     </Pressable>
                   );
                 })}
@@ -1602,13 +1601,6 @@ const styles = StyleSheet.create({
     color: "#F2C961",
     fontSize: 9.5,
     fontWeight: "900",
-  },
-  giftName: {
-    width: 68,
-    color: "#C9C2BD",
-    fontSize: 8.5,
-    textAlign: "center",
-    marginTop: 2,
   },
 
   shortcutsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-around", gap: 8 },
