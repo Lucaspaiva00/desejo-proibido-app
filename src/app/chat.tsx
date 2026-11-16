@@ -637,6 +637,23 @@ export default function Chat() {
       </View>
 
       <View style={styles.creditStrip}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: dialogo === "presentes" }}
+          onPress={() => setDialogo(dialogo === "presentes" ? null : "presentes")}
+          style={({ pressed }) => [
+            styles.giftShortcut,
+            dialogo === "presentes" && styles.giftShortcutActive,
+            pressed && styles.pressed,
+          ]}
+        >
+          <SymbolView
+            name={{ ios: "gift.fill", android: "redeem", web: "redeem" } as any}
+            size={17}
+            tintColor={GOLD}
+          />
+          <Text style={styles.giftShortcutLabel}>Presentes</Text>
+        </Pressable>
         <View style={styles.creditBadge}>
           <SymbolView
             name={{ ios: "diamond.fill", android: "diamond", web: "diamond" } as any}
@@ -858,12 +875,6 @@ export default function Chat() {
                 onPress={() => { setDialogo(null); void abrirVideochamada(); }}
               />
               <Tool
-                label="Presentes"
-                color="#A80724"
-                icon={{ ios: "gift.fill", android: "redeem", web: "redeem" }}
-                onPress={() => setDialogo("presentes")}
-              />
-              <Tool
                 label="Comprar créditos"
                 color="#087D52"
                 icon={{ ios: "wallet.bifold.fill", android: "wallet", web: "wallet" }}
@@ -927,8 +938,8 @@ export default function Chat() {
         <View style={styles.composer}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={dialogo === "presentes" ? "Voltar para anexos" : "Anexos"}
-            accessibilityState={{ expanded: dialogo === "atalhos" || dialogo === "presentes" }}
+            accessibilityLabel="Anexos"
+            accessibilityState={{ expanded: dialogo === "atalhos" }}
             onPress={() => setDialogo(dialogo === "atalhos" ? null : "atalhos")}
             style={[styles.composerButton, styles.shortcutButton]}
           >
@@ -1291,10 +1302,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#030303",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(232,190,90,0.24)",
-    alignItems: "flex-end",
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 13,
   },
+  giftShortcut: {
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(232,190,90,0.45)",
+    backgroundColor: "#17120B",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  giftShortcutActive: { borderColor: GOLD, backgroundColor: "#30230F" },
+  giftShortcutLabel: { color: GOLD, fontWeight: "700", fontSize: 12 },
   creditBadge: {
     height: 35,
     borderRadius: 18,
