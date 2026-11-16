@@ -1,7 +1,8 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SymbolView } from "expo-symbols";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { DPBottomNav } from "../components/ui/dp-bottom-nav";
@@ -33,6 +35,9 @@ type LocationFilter = "cidade" | "estado" | "qualquer";
 type SortFilter = "recent" | "boost" | "random";
 
 type FeedFilterState = {
+  q?: string;
+  cidade?: string;
+  estado?: string;
   genero: GenderFilter;
   idadeMin: number;
   idadeMax: number;
@@ -87,14 +92,6 @@ const PREVIEW_USER = {
   },
 };
 
-const AGE_OPTIONS = [
-  { label: "18–25", min: 18, max: 25 },
-  { label: "26–35", min: 26, max: 35 },
-  { label: "36–45", min: 36, max: 45 },
-  { label: "46–60", min: 46, max: 60 },
-  { label: "Todas", min: 18, max: 99 },
-] as const;
-
 function idadeDe(nascimento?: string | Date | null) {
   if (!nascimento) return null;
   const data = new Date(nascimento);
@@ -141,7 +138,9 @@ function defaultFiltersForProfile(perfil: any): FeedFilterState {
 
 export default function Feed() {
   const navigation = useNavigation<any>();
-  const { preview } = useLocalSearchParams<{ preview?: string }>();
+  const { preview, preferencias } = useLocalSearchParams<{ preview?: string; preferencias?: string }>();
+  const preferenciasSalvas = useRef<FeedFilterState | null>(null);
+  const preferenceKey = useRef<string | null>(null);
   const previewAtivo = String(preview || "") === "1";
 
   const [loading, setLoading] = useState(true);
@@ -163,15 +162,28 @@ export default function Feed() {
     ordenarPor: "recent",
   });
   const [filtrosDraft, setFiltrosDraft] = useState<FeedFilterState>(filtros);
+  const [erroFiltros, setErroFiltros] = useState("");
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   useEffect(() => {
     inicializar();
   }, [previewAtivo]);
 
+  useEffect(() => {
+    if (preferencias === "1" && !loading) {
+      abrirFiltros();
+      router.setParams({ preferencias: "" });
+    }
+  }, [preferencias, loading]);
+
   async function inicializar() {
     const perfil = await carregarResumo();
-    const iniciais = defaultFiltersForProfile(perfil);
+    const padrao = defaultFiltersForProfile(perfil);
+    const salvos = preferenceKey.current
+      ? await AsyncStorage.getItem(preferenceKey.current).then((value) => JSON.parse(value || "null")).catch(() => null)
+      : null;
+    const iniciais = { ...padrao, ...salvos };
+    preferenciasSalvas.current = iniciais;
     setFiltros(iniciais);
     setFiltrosDraft(iniciais);
     await carregar(iniciais, perfil, "Descobrir");
@@ -195,6 +207,7 @@ export default function Feed() {
   }
 
   async function carregarResumo() {
+    preferenceKey.current = null;
     if (previewAtivo) {
       const perfilPreview = { cidade: "Salvador", estado: "BA", genero: "MASCULINO" };
       setSaldo(250);
@@ -208,6 +221,7 @@ export default function Feed() {
         api.get("/usuarios/me", { headers }),
         api.get("/perfil/me", { headers }),
       ]);
+      if (usuarioRes.data?.id) preferenceKey.current = `descobrir:preferencias:${usuarioRes.data.id}`;
       setSaldo(Number(usuarioRes.data?.saldoCreditos || 0));
       const perfil = perfilRes.data || null;
       setMeuPerfil(perfil);
@@ -226,12 +240,15 @@ export default function Feed() {
       idadeMax: estado.idadeMax,
       somenteComFoto: estado.somenteComFoto,
       somenteVerificados: estado.somenteVerificados,
+      q: estado.q?.trim() || undefined,
       ...(estado.local === "cidade" && perfilBase?.cidade
         ? { cidade: perfilBase.cidade, estado: perfilBase?.estado || "" }
         : {}),
       ...(estado.local === "estado" && perfilBase?.estado
         ? { estado: perfilBase.estado }
         : {}),
+      ...(estado.cidade?.trim() ? { cidade: estado.cidade.trim() } : {}),
+      ...(estado.estado?.trim() ? { estado: estado.estado.trim().toUpperCase() } : {}),
     };
   }
 
@@ -437,11 +454,11 @@ export default function Feed() {
     let next = { ...filtros };
 
     if (novoModo === "Descobrir") {
-      next = defaultFiltersForProfile(meuPerfil);
+      next = preferenciasSalvas.current ?? defaultFiltersForProfile(meuPerfil);
       setFiltros(next);
       setFiltrosDraft(next);
     } else if (novoModo === "Perto de você") {
-      next = { ...next, local: "cidade" };
+      next = { ...next, local: "cidade", cidade: "", estado: "" };
       setFiltros(next);
       setFiltrosDraft(next);
     } else if (novoModo === "Novos") {
@@ -455,12 +472,24 @@ export default function Feed() {
   }
 
   function abrirFiltros() {
+    setErroFiltros("");
     setFiltrosDraft({ ...filtros });
     setFiltrosAbertos(true);
   }
 
   async function aplicarFiltros() {
     const next = { ...filtrosDraft };
+    if (next.idadeMin < 18 || next.idadeMax > 99 || next.idadeMin > next.idadeMax) {
+      setErroFiltros("Informe um intervalo de idade entre 18 e 99 anos.");
+      return;
+    }
+    try {
+      if (preferenceKey.current) await AsyncStorage.setItem(preferenceKey.current, JSON.stringify(next));
+    } catch {
+      setErroFiltros("Não foi possível salvar as preferências.");
+      return;
+    }
+    preferenciasSalvas.current = next;
     setFiltros(next);
     setFiltrosAbertos(false);
     await carregar(next, meuPerfil, modo);
@@ -468,6 +497,13 @@ export default function Feed() {
 
   async function limparFiltros() {
     const next = defaultFiltersForProfile(meuPerfil);
+    try {
+      if (preferenceKey.current) await AsyncStorage.removeItem(preferenceKey.current);
+    } catch {
+      setErroFiltros("Não foi possível limpar as preferências.");
+      return;
+    }
+    preferenciasSalvas.current = next;
     setFiltros(next);
     setFiltrosDraft(next);
     setModo("Descobrir");
@@ -476,7 +512,7 @@ export default function Feed() {
   }
 
   async function buscarNovamente() {
-    const next = defaultFiltersForProfile(meuPerfil);
+    const next = preferenciasSalvas.current ?? defaultFiltersForProfile(meuPerfil);
     setFiltros(next);
     setFiltrosDraft(next);
     setModo("Descobrir");
@@ -501,7 +537,8 @@ export default function Feed() {
     let count = 0;
     if (filtros.genero !== padrao.genero) count += 1;
     if (filtros.idadeMin !== padrao.idadeMin || filtros.idadeMax !== padrao.idadeMax) count += 1;
-    if (filtros.local !== padrao.local) count += 1;
+    if (filtros.local !== padrao.local || filtros.cidade || filtros.estado) count += 1;
+    if (filtros.q?.trim()) count += 1;
     if (filtros.somenteComFoto) count += 1;
     if (filtros.somenteVerificados) count += 1;
     if (filtros.ordenarPor !== padrao.ordenarPor) count += 1;
@@ -676,14 +713,26 @@ export default function Feed() {
             <View style={styles.sheetHeader}>
               <View>
                 <Text style={styles.filterSheetEyebrow}>DESCOBRIR</Text>
-                <Text style={styles.filterSheetTitle}>Filtros</Text>
+                <Text style={styles.filterSheetTitle}>Preferências de busca</Text>
               </View>
               <Pressable style={styles.sheetClose} onPress={() => setFiltrosAbertos(false)}>
                 <Icon name={ICONS.close} size={21} color="#D8D0CB" />
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+              {([["q", "Nome ou bio"], ["cidade", "Cidade"], ["estado", "Estado (UF)"]] as const).map(([campo, label]) => (
+                <View key={campo}>
+                  <Text style={styles.filterGroupLabel}>{label}</Text>
+                  <TextInput
+                    accessibilityLabel={label}
+                    style={styles.filterInput}
+                    value={filtrosDraft[campo] ?? ""}
+                    maxLength={campo === "estado" ? 2 : 100}
+                    onChangeText={(value) => setFiltrosDraft((old) => ({ ...old, [campo]: value, ...(campo === "q" ? {} : { local: "qualquer" as const }) }))}
+                  />
+                </View>
+              ))}
               <Text style={styles.filterGroupLabel}>MODO</Text>
               <View style={styles.optionRow}>
                 {(["Descobrir", "Online", "Perto de você", "Novos"] as const).map((item) => (
@@ -710,7 +759,7 @@ export default function Feed() {
                 ].map(([value, label]) => (
                   <Pressable
                     key={value}
-                    onPress={() => setFiltrosDraft((old) => ({ ...old, local: value as LocationFilter }))}
+                    onPress={() => setFiltrosDraft((old) => ({ ...old, local: value as LocationFilter, cidade: "", estado: "" }))}
                     style={[styles.optionChip, filtrosDraft.local === value && styles.optionChipActive]}
                   >
                     <Text style={[styles.optionChipText, filtrosDraft.local === value && styles.optionChipTextActive]}>{label}</Text>
@@ -735,20 +784,20 @@ export default function Feed() {
                 ))}
               </View>
 
-              <Text style={styles.filterGroupLabel}>IDADE</Text>
               <View style={styles.optionRow}>
-                {AGE_OPTIONS.map((item) => {
-                  const active = filtrosDraft.idadeMin === item.min && filtrosDraft.idadeMax === item.max;
-                  return (
-                    <Pressable
-                      key={item.label}
-                      onPress={() => setFiltrosDraft((old) => ({ ...old, idadeMin: item.min, idadeMax: item.max }))}
-                      style={[styles.optionChip, active && styles.optionChipActive]}
-                    >
-                      <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>{item.label}</Text>
-                    </Pressable>
-                  );
-                })}
+                {([["idadeMin", "Idade mínima"], ["idadeMax", "Idade máxima"]] as const).map(([campo, label]) => (
+                  <View key={campo} style={{ flex: 1 }}>
+                    <Text style={styles.filterGroupLabel}>{label}</Text>
+                    <TextInput
+                      accessibilityLabel={label}
+                      style={styles.filterInput}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      value={String(filtrosDraft[campo] || "")}
+                      onChangeText={(value) => setFiltrosDraft((old) => ({ ...old, [campo]: Number(value.replace(/\D/g, "")) }))}
+                    />
+                  </View>
+                ))}
               </View>
 
               <Text style={styles.filterGroupLabel}>PREFERÊNCIAS</Text>
@@ -800,13 +849,14 @@ export default function Feed() {
               </View>
             </ScrollView>
 
+            {erroFiltros ? <Text accessibilityRole="alert" style={styles.filterError}>{erroFiltros}</Text> : null}
             <View style={styles.sheetActions}>
               <Pressable style={styles.resetButton} onPress={limparFiltros}>
                 <Icon name={ICONS.reset} size={20} color="#DDB059" />
                 <Text style={styles.resetButtonText}>Limpar</Text>
               </Pressable>
               <Pressable style={styles.applyFiltersButton} onPress={aplicarFiltros}>
-                <Text style={styles.applyFiltersText}>Aplicar filtros</Text>
+                <Text style={styles.applyFiltersText}>Salvar filtros</Text>
                 <Icon name={ICONS.check} size={20} color="#FFF" />
               </Pressable>
             </View>
@@ -1063,6 +1113,8 @@ const styles = StyleSheet.create({
   sheetScroll: { maxHeight: 470 },
   filterSheetEyebrow: { color: "#DDB059", fontSize: 9, fontWeight: "800", letterSpacing: 2.8 },
   filterSheetTitle: { color: "#FFF", fontSize: 26, fontWeight: "800", marginTop: 4 },
+  filterInput: { color: "#FFF", backgroundColor: "#21191A", borderRadius: 10, padding: 10, minHeight: 44 },
+  filterError: { color: "#FF9696", paddingHorizontal: 16 },
   filterGroupLabel: {
     color: "#A49C96", fontSize: 9, fontWeight: "900", letterSpacing: 2,
     marginTop: 17, marginBottom: 9,

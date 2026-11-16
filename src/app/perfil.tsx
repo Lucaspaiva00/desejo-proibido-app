@@ -280,6 +280,14 @@ export default function Perfil() {
           </Text>
         </Pressable>
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: "/feed", params: { preferencias: "1" } })}
+          style={styles.editButton}
+        >
+          <Text style={styles.editButtonText}>Preferências de busca</Text>
+        </Pressable>
+
         {editando ? (
           <View style={styles.editCard}>
             <Text style={styles.editCardTitle}>Editar perfil</Text>
